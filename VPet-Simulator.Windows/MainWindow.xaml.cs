@@ -267,85 +267,88 @@ namespace VPet_Simulator.Windows
                         }
                         Set["v"][(gbol)"CODC"] = true;
                     }
-                    Dispatcher.Invoke(() =>
+                    if (RuntimeFeatures.EnableMultiplayer)
                     {
-                        var menuItem = new MenuItem()
+                        Dispatcher.Invoke(() =>
                         {
-                            Header = "访客表".Translate(),
-                            HorizontalContentAlignment = HorizontalAlignment.Center
-                        };
-                        Main.ToolBar.MenuInteract.Items.Add(menuItem);
+                            var menuItem = new MenuItem()
+                            {
+                                Header = "访客表".Translate(),
+                                HorizontalContentAlignment = HorizontalAlignment.Center
+                            };
+                            Main.ToolBar.MenuInteract.Items.Add(menuItem);
 
-                        var menuCreate = new MenuItem()
-                        {
-                            Header = "创建".Translate(),
-                            HorizontalContentAlignment = HorizontalAlignment.Center
-                        };
-                        menuCreate.Click += (_, _) =>
-                        {
-                            if (winMutiPlayer == null)
+                            var menuCreate = new MenuItem()
                             {
-                                winMutiPlayer = new winMutiPlayer(this);
-                                winMutiPlayer.Show();
-                            }
-                            else
+                                Header = "创建".Translate(),
+                                HorizontalContentAlignment = HorizontalAlignment.Center
+                            };
+                            menuCreate.Click += (_, _) =>
                             {
-                                MessageBoxX.Show("已经有加入了一个访客表,无法再创建更多".Translate());
-                                winMutiPlayer.Focus();
-                            }
-                        };
-                        menuItem.Items.Add(menuCreate);
-
-                        var menuJoin = new MenuItem()
-                        {
-                            Header = "加入".Translate(),
-                            HorizontalContentAlignment = HorizontalAlignment.Center
-                        };
-                        menuJoin.Click += (_, _) =>
-                        {
-                            if (winMutiPlayer == null)
-                            {
-                                winInputBox.Show(this, "请输入访客表ID/固定ID".Translate(), "加入访客表".Translate(), "1860000",async (id) =>
+                                if (winMutiPlayer == null)
                                 {
-                                    if (ulong.TryParse(id, NumberStyles.HexNumber, null, out ulong lid))
+                                    winMutiPlayer = new winMutiPlayer(this);
+                                    winMutiPlayer.Show();
+                                }
+                                else
+                                {
+                                    MessageBoxX.Show("已经有加入了一个访客表,无法再创建更多".Translate());
+                                    winMutiPlayer.Focus();
+                                }
+                            };
+                            menuItem.Items.Add(menuCreate);
+
+                            var menuJoin = new MenuItem()
+                            {
+                                Header = "加入".Translate(),
+                                HorizontalContentAlignment = HorizontalAlignment.Center
+                            };
+                            menuJoin.Click += (_, _) =>
+                            {
+                                if (winMutiPlayer == null)
+                                {
+                                    winInputBox.Show(this, "请输入访客表ID/固定ID".Translate(), "加入访客表".Translate(), "1860000",async (id) =>
                                     {
-                                        winMutiPlayer = new winMutiPlayer(this, lid);
-                                        winMutiPlayer.Show();
-                                    }
-                                    else if ((id.StartsWith('V') || id.StartsWith('v')) && int.TryParse(id[1..], out int fixedid))
-                                    {
-                                        if (ulong.TryParse(await GetVPetRoom("SteamRoomGetLobbyID", fixID: fixedid), out lid) && lid > 1860000)
+                                        if (ulong.TryParse(id, NumberStyles.HexNumber, null, out ulong lid))
                                         {
                                             winMutiPlayer = new winMutiPlayer(this, lid);
                                             winMutiPlayer.Show();
                                         }
-                                        else
+                                        else if ((id.StartsWith('V') || id.StartsWith('v')) && int.TryParse(id[1..], out int fixedid))
                                         {
-                                            MessageBoxX.Show("未找到该固定ID,请检查输入".Translate());
+                                            if (ulong.TryParse(await GetVPetRoom("SteamRoomGetLobbyID", fixID: fixedid), out lid) && lid > 1860000)
+                                            {
+                                                winMutiPlayer = new winMutiPlayer(this, lid);
+                                                winMutiPlayer.Show();
+                                            }
+                                            else
+                                            {
+                                                MessageBoxX.Show("未找到该固定ID,请检查输入".Translate());
+                                            }
                                         }
-                                    }
-                                });
-                            }
-                            else
-                            {
-                                MessageBoxX.Show("已经有加入了一个访客表,无法再创建更多".Translate());
-                                winMutiPlayer.Focus();
-                            }
-                        };
-                        menuItem.Items.Add(menuJoin);
+                                    });
+                                }
+                                else
+                                {
+                                    MessageBoxX.Show("已经有加入了一个访客表,无法再创建更多".Translate());
+                                    winMutiPlayer.Focus();
+                                }
+                            };
+                            menuItem.Items.Add(menuJoin);
 
-                        int clid = Array.IndexOf(App.Args, "+connect_lobby");
-                        if (clid != -1)
-                        {
-                            if (ulong.TryParse(App.Args[clid + 1], out ulong lid))
+                            int clid = Array.IndexOf(App.Args, "+connect_lobby");
+                            if (clid != -1)
                             {
-                                winMutiPlayer = new winMutiPlayer(this, lid);
-                                winMutiPlayer.Show();
+                                if (ulong.TryParse(App.Args[clid + 1], out ulong lid))
+                                {
+                                    winMutiPlayer = new winMutiPlayer(this, lid);
+                                    winMutiPlayer.Show();
+                                }
                             }
-                        }
-                    });
-                    SteamMatchmaking.OnLobbyInvite += SteamMatchmaking_OnLobbyInvite;
-                    SteamFriends.OnGameLobbyJoinRequested += SteamFriends_OnGameLobbyJoinRequested;
+                        });
+                        SteamMatchmaking.OnLobbyInvite += SteamMatchmaking_OnLobbyInvite;
+                        SteamFriends.OnGameLobbyJoinRequested += SteamFriends_OnGameLobbyJoinRequested;
+                    }
                 }
 
 
@@ -436,6 +439,9 @@ namespace VPet_Simulator.Windows
 
         private void SteamFriends_OnGameLobbyJoinRequested(Lobby lobby, SteamId id)
         {
+            if (!RuntimeFeatures.EnableMultiplayer)
+                return;
+
             Dispatcher.Invoke(() =>
             {
                 if (winMutiPlayer == null)
@@ -453,6 +459,9 @@ namespace VPet_Simulator.Windows
 
         private void SteamMatchmaking_OnLobbyInvite(Friend friend, Lobby lobby)
         {
+            if (!RuntimeFeatures.EnableMultiplayer)
+                return;
+
             if (Set["banuser"][(gbol)friend.Id.Value.ToString()])
                 return;
             if (!friend.IsPlayingThisGame)

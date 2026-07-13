@@ -1619,6 +1619,9 @@ namespace VPet_Simulator.Windows
 
         private void btn_fixdata_Click(object sender, RoutedEventArgs e)
         {
+            if (!RuntimeFeatures.EnableNetwork)
+                return;
+
             //先拿玩家游戏时间
             int playtime;
             try

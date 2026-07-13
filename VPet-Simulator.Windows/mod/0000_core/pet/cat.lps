@@ -1,0 +1,15 @@
+pet#cat:|intor#Original placeholder cat for standalone MVP loading tests:|path#cat:|petname#Cat Placeholder:|
+
+tag#all,cat:|
+
+touchhead:|px#190:|py#120:|sw#120:|sh#110:|
+touchbody:|px#165:|py#260:|sw#170:|sh#120:|
+touchraised:|happy_px#0:|happy_py#50:|happy_sw#500:|happy_sh#300:|nomal_px#0:|nomal_py#50:|nomal_sw#500:|nomal_sh#300:|poorcondition_px#0:|poorcondition_py#50:|poorcondition_sw#500:|poorcondition_sh#300:|ill_px#0:|ill_py#50:|ill_sw#500:|ill_sh#300:|
+
+raisepoint:|happy_x#250:|happy_y#210:|nomal_x#250:|nomal_y#210:|poorcondition_x#250:|poorcondition_y#210:|ill_x#250:|ill_y#210:|
+
+move:|graph#walk.left:|TriggerLeft#200:|TriggerType#16:|CheckLeft#100:|CheckType#16:|SpeedX#-10:|Distance#8:|ModeType#12:|
+move:|graph#walk.right:|TriggerRight#200:|TriggerType#32:|CheckRight#100:|CheckType#32:|SpeedX#10:|Distance#8:|ModeType#12:|
+duration:|state#10:|squat#20:|boring#20:|sleep#20:|
+
+side:|left#150:|right#350:|

@@ -88,20 +88,27 @@ namespace VPet_Simulator.Windows
 
             //判断是不是Steam用户,因为本软件会发布到Steam
             //在 https://store.steampowered.com/app/1920960/VPet
-            try
+            if (RuntimeFeatures.EnableSteam)
             {
+                try
+                {
 #if DEMO
-                SteamClient.Init(2293870, true);
+                    SteamClient.Init(2293870, true);
 #else
-                SteamClient.Init(1920960, true);
+                    SteamClient.Init(1920960, true);
 #endif
-                SteamClient.RunCallbacks();
-                IsSteamUser = SteamClient.IsValid;
-                ////同时看看有没有买dlc,如果有就添加dlc按钮
-                //if (Steamworks.SteamApps.IsDlcInstalled(1386450))
-                //  dlcToolStripMenuItem.Visible = true;
+                    SteamClient.RunCallbacks();
+                    IsSteamUser = SteamClient.IsValid;
+                    ////同时看看有没有买dlc,如果有就添加dlc按钮
+                    //if (Steamworks.SteamApps.IsDlcInstalled(1386450))
+                    //  dlcToolStripMenuItem.Visible = true;
+                }
+                catch
+                {
+                    IsSteamUser = false;
+                }
             }
-            catch
+            else
             {
                 IsSteamUser = false;
             }

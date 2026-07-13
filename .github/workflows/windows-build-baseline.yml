@@ -42,4 +42,51 @@ jobs:
         run: dotnet build VPet-Simulator.Windows.Interface/VPet-Simulator.Windows.Interface.csproj -c Release --no-restore -p:EnableWindowsTargeting=true -v:normal
 
       - name: Build Windows
-        run: dotnet build VPet-Simulator.Windows/VPet-Simulator.Windows.csproj -c Release --no-restore -p:EnableWindowsTargeting=true -v:normal
+        id: build-windows
+        shell: pwsh
+        run: |
+          $logPath = "windows-build.log"
+          $binlogPath = "windows-build.binlog"
+
+          Remove-Item -Path $logPath, $binlogPath -Force -ErrorAction SilentlyContinue
+
+          & dotnet build VPet-Simulator.Windows/VPet-Simulator.Windows.csproj `
+            -c Release `
+            --no-restore `
+            -p:EnableWindowsTargeting=true `
+            -v:diag `
+            "-bl:$binlogPath" *> $logPath
+
+          $exitCode = $LASTEXITCODE
+          "exit_code=$exitCode" >> $env:GITHUB_OUTPUT
+
+          Write-Host "dotnet build exit code: $exitCode"
+          Write-Host "Last 300 lines from $logPath:"
+          if (Test-Path $logPath) {
+            Get-Content -Path $logPath -Tail 300
+          } else {
+            Write-Host "$logPath was not created."
+          }
+
+          exit 0
+
+      - name: Upload Windows build diagnostics
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: windows-build-diagnostics
+          path: |
+            windows-build.log
+            windows-build.binlog
+          if-no-files-found: warn
+          retention-days: 7
+
+      - name: Fail if Windows build failed
+        if: always()
+        shell: pwsh
+        run: |
+          $exitCode = "${{ steps.build-windows.outputs.exit_code }}"
+          if ($exitCode -ne "0") {
+            Write-Error "Build Windows failed with exit code $exitCode"
+            exit 1
+          }

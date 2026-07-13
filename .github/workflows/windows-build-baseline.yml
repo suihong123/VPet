@@ -43,57 +43,16 @@ jobs:
 
       - name: Build Windows
         id: build-windows
-        shell: pwsh
+        shell: cmd
         run: |
-          $logPath = "windows-build.log"
-          $binlogPath = "windows-build.binlog"
-          $stdoutPath = "windows-build.stdout.log"
-          $stderrPath = "windows-build.stderr.log"
-
-          Remove-Item -Path $logPath, $binlogPath, $stdoutPath, $stderrPath -Force -ErrorAction SilentlyContinue
-          New-Item -Path $logPath -ItemType File -Force | Out-Null
-
-          $arguments = @(
-            "build",
-            "VPet-Simulator.Windows/VPet-Simulator.Windows.csproj",
-            "-c",
-            "Release",
-            "--no-restore",
-            "-p:EnableWindowsTargeting=true",
-            "-v:diag",
-            "-bl:$binlogPath"
-          )
-
-          $process = Start-Process `
-            -FilePath "dotnet" `
-            -ArgumentList $arguments `
-            -NoNewWindow `
-            -Wait `
-            -PassThru `
-            -RedirectStandardOutput $stdoutPath `
-            -RedirectStandardError $stderrPath
-
-          $exitCode = $process.ExitCode
-          "exit_code=$exitCode" >> $env:GITHUB_OUTPUT
-
-          if (Test-Path $stdoutPath) {
-            Get-Content -Path $stdoutPath | Add-Content -Path $logPath
-          }
-          if (Test-Path $stderrPath) {
-            Add-Content -Path $logPath -Value ""
-            Add-Content -Path $logPath -Value "----- STDERR -----"
-            Get-Content -Path $stderrPath | Add-Content -Path $logPath
-          }
-
-          Write-Host "dotnet build exit code: $exitCode"
-          Write-Host "Last 300 lines from $logPath:"
-          if (Test-Path $logPath) {
-            Get-Content -Path $logPath -Tail 300
-          } else {
-            Write-Host "$logPath was not created."
-          }
-
-          exit 0
+          type nul > windows-build.log
+          dotnet build VPet-Simulator.Windows/VPet-Simulator.Windows.csproj -c Release --no-restore -p:EnableWindowsTargeting=true -v:diag -bl:windows-build.binlog > windows-build.log 2>&1
+          set EXIT_CODE=%ERRORLEVEL%
+          echo exit_code=%EXIT_CODE%>> %GITHUB_OUTPUT%
+          echo dotnet build exit code: %EXIT_CODE%
+          echo Last 300 lines from windows-build.log:
+          powershell -NoLogo -NoProfile -Command "Get-Content -Path 'windows-build.log' -Tail 300"
+          exit /b 0
 
       - name: Upload Windows build diagnostics
         if: always()

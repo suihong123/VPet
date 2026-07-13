@@ -144,55 +144,58 @@ namespace VPet_Simulator.Windows
                 CancellationTokenSource source = new CancellationTokenSource();
                 var tsk = Task.Run(async () =>
                 {
-                    if (IsSteamUser)//如果是steam用户,尝试加载workshop
+                    if (RuntimeFeatures.EnableWorkshop)
                     {
-                        //Leaderboard? leaderboard = await SteamUserStats.FindLeaderboardAsync("chatgpt_auth");
-                        //leaderboard?.ReplaceScore(Function.Rnd.Next());
-                        var workshop = new Line_D("workshop");
-                        await Dispatcher.InvokeAsync(new Action(() =>
+                        if (IsSteamUser)//如果是steam用户,尝试加载workshop
                         {
-                            LoadingText.Content = "Loading Steam Workshop\nDouble Click To Skip";
-                            LoadingText.MouseDoubleClick += (_, _) =>
+                            //Leaderboard? leaderboard = await SteamUserStats.FindLeaderboardAsync("chatgpt_auth");
+                            //leaderboard?.ReplaceScore(Function.Rnd.Next());
+                            var workshop = new Line_D("workshop");
+                            await Dispatcher.InvokeAsync(new Action(() =>
                             {
-                                if ((string)LoadingText.Content == "Loading Steam Workshop\nDouble Click To Skip")
+                                LoadingText.Content = "Loading Steam Workshop\nDouble Click To Skip";
+                                LoadingText.MouseDoubleClick += (_, _) =>
                                 {
-                                    NOCancel = false;
+                                    if ((string)LoadingText.Content == "Loading Steam Workshop\nDouble Click To Skip")
+                                    {
+                                        NOCancel = false;
+                                    }
+                                };
+                            }));
+                            int i = 1;
+                            while (true)
+                            {
+                                var page = await Steamworks.Ugc.Query.ItemsReadyToUse.GetPageAsync(i++);
+                                if (page.HasValue && page.Value.ResultCount != 0)
+                                {
+                                    foreach (Steamworks.Ugc.Item entry in page.Value.Entries)
+                                    {
+                                        if (!NOCancel)
+                                        {
+                                            return;
+                                        }
+                                        if (entry.Directory != null)
+                                        {
+                                            Path.Add(new DirectoryInfo(entry.Directory));
+                                            workshop.Add(new Sub(entry.Directory, ""));
+                                        }
+                                    }
                                 }
-                            };
-                        }));
-                        int i = 1;
-                        while (true)
-                        {
-                            var page = await Steamworks.Ugc.Query.ItemsReadyToUse.GetPageAsync(i++);
-                            if (page.HasValue && page.Value.ResultCount != 0)
-                            {
-                                foreach (Steamworks.Ugc.Item entry in page.Value.Entries)
+                                else
                                 {
-                                    if (!NOCancel)
-                                    {
-                                        return;
-                                    }
-                                    if (entry.Directory != null)
-                                    {
-                                        Path.Add(new DirectoryInfo(entry.Directory));
-                                        workshop.Add(new Sub(entry.Directory, ""));
-                                    }
+                                    break;
                                 }
                             }
-                            else
-                            {
-                                break;
-                            }
+                            if (workshop.Count != 0)
+                                Set["workshop"] = workshop;
                         }
-                        if (workshop.Count != 0)
-                            Set["workshop"] = workshop;
-                    }
-                    else
-                    {
-                        var workshop = Set["workshop"];
-                        foreach (Sub ws in workshop)
+                        else
                         {
-                            Path.Add(new DirectoryInfo(ws.Name));
+                            var workshop = Set["workshop"];
+                            foreach (Sub ws in workshop)
+                            {
+                                Path.Add(new DirectoryInfo(ws.Name));
+                            }
                         }
                     }
                 }, source.Token);
@@ -201,7 +204,7 @@ namespace VPet_Simulator.Windows
                 {
                     Thread.Sleep(500);
                 }
-                if (!NOCancel)
+                if (RuntimeFeatures.EnableWorkshop && !NOCancel)
                 {
                     source.Cancel();
                     var workshop = Set["workshop"];

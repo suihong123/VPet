@@ -1,0 +1,45 @@
+name: Windows Build Baseline
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - audit/windows-build-baseline
+
+jobs:
+  build:
+    name: Restore and build Windows baseline
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup .NET 8 SDK
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 8.0.x
+
+      - name: Show .NET environment
+        run: |
+          dotnet --info
+          dotnet --list-sdks
+          dotnet --list-runtimes
+
+      - name: Restore Core
+        run: dotnet restore VPet-Simulator.Core/VPet-Simulator.Core.csproj -p:EnableWindowsTargeting=true
+
+      - name: Restore Interface
+        run: dotnet restore VPet-Simulator.Windows.Interface/VPet-Simulator.Windows.Interface.csproj -p:EnableWindowsTargeting=true
+
+      - name: Restore Windows
+        run: dotnet restore VPet-Simulator.Windows/VPet-Simulator.Windows.csproj -p:EnableWindowsTargeting=true
+
+      - name: Build Core
+        run: dotnet build VPet-Simulator.Core/VPet-Simulator.Core.csproj -c Release --no-restore -p:EnableWindowsTargeting=true -v:normal
+
+      - name: Build Interface
+        run: dotnet build VPet-Simulator.Windows.Interface/VPet-Simulator.Windows.Interface.csproj -c Release --no-restore -p:EnableWindowsTargeting=true -v:normal
+
+      - name: Build Windows
+        run: dotnet build VPet-Simulator.Windows/VPet-Simulator.Windows.csproj -c Release --no-restore -p:EnableWindowsTargeting=true -v:normal

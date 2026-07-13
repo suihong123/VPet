@@ -1204,6 +1204,8 @@ namespace VPet_Simulator.Windows
         /// </summary>
         public void DiagnosisUPLoad()
         {
+            if (!RuntimeFeatures.EnableTelemetry)
+                return;
             if (!IsSteamUser)
                 return;//不遥测非Steam用户
             if (!Set.DiagnosisDayEnable)
@@ -2490,9 +2492,12 @@ namespace VPet_Simulator.Windows
                       if (errstr.Contains("0000_core"))
                       {
                           MessageBoxX.Show("动画加载错误,请尝试以下解决方法修复问题:\n\t1. 删除游戏根目录`Cache`文件夹\n\t2. 删除游戏根目录`mod\\0000_core\\pet`文件夹,并在Steam验证游戏完整性".Translate(), "动画加载错误".Translate());
-                          var winrep = new winReport(this, errstr);
-                          winrep.tDescription.Text = "动画加载错误".Translate();
-                          winrep.Show();
+                          if (RuntimeFeatures.EnableTelemetry)
+                          {
+                              var winrep = new winReport(this, errstr);
+                              winrep.tDescription.Text = "动画加载错误".Translate();
+                              winrep.Show();
+                          }
                       }
                       else
                           MessageBoxX.Show("动画加载错误\n虚拟桌宠模拟器未能成功加载该动画\n请联系MOD作者修复该问题".Translate() + '\n' + errstr, "动画加载错误".Translate());

@@ -133,7 +133,8 @@ namespace VPet_Simulator.Windows
             }
             else
             {
-                new winReport(((MainWindow)MainWindow), errstr).Show();
+                if (RuntimeFeatures.EnableTelemetry)
+                    new winReport(((MainWindow)MainWindow), errstr).Show();
                 return;
             }
         }

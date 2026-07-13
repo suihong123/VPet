@@ -52,16 +52,27 @@ jobs:
 
       - name: Build Windows
         id: build-windows
-        shell: cmd
+        shell: pwsh
         run: |
-          type nul > windows-build.log
-          dotnet build VPet-Simulator.Windows/VPet-Simulator.Windows.csproj -c Release --no-restore -p:EnableWindowsTargeting=true -p:Platform=x64 -v:diag -bl:windows-build.binlog > windows-build.log 2>&1
-          set EXIT_CODE=%ERRORLEVEL%
-          echo exit_code=%EXIT_CODE%>> %GITHUB_OUTPUT%
-          echo dotnet build exit code: %EXIT_CODE%
-          echo Last 300 lines from windows-build.log:
-          powershell -NoLogo -NoProfile -Command "Get-Content -Path 'windows-build.log' -Tail 300"
-          exit /b 0
+          $logPath = "windows-build.log"
+          $binlogPath = "windows-build.binlog"
+
+          dotnet build VPet-Simulator.Windows/VPet-Simulator.Windows.csproj `
+            -c Release `
+            --no-restore `
+            -p:Platform=x64 `
+            -p:EnableWindowsTargeting=true `
+            -v:diag `
+            "-bl:$binlogPath" 2>&1 | Tee-Object -FilePath $logPath
+
+          $buildExitCode = $LASTEXITCODE
+          "exit_code=$buildExitCode" | Out-File -FilePath $env:GITHUB_OUTPUT -Append
+
+          Write-Host "dotnet build exit code: $buildExitCode"
+          Write-Host "Last 300 lines:"
+          Get-Content $logPath -Tail 300
+
+          exit 0
 
       - name: Upload Windows build diagnostics
         if: always()
@@ -79,6 +90,7 @@ jobs:
         shell: pwsh
         run: |
           $exitCode = "${{ steps.build-windows.outputs.exit_code }}"
+          Write-Host "Read Build Windows exit_code: $exitCode"
           if ($exitCode -ne "0") {
             Write-Error "Build Windows failed with exit code $exitCode"
             exit 1

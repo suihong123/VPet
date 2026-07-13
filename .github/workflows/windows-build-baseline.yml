@@ -33,7 +33,16 @@ jobs:
         run: dotnet restore VPet-Simulator.Windows.Interface/VPet-Simulator.Windows.Interface.csproj -p:EnableWindowsTargeting=true
 
       - name: Restore Windows
-        run: dotnet restore VPet-Simulator.Windows/VPet-Simulator.Windows.csproj -p:EnableWindowsTargeting=true
+        run: dotnet restore VPet-Simulator.Windows/VPet-Simulator.Windows.csproj -p:EnableWindowsTargeting=true -p:Platform=x64
+
+      - name: Check Windows Steamworks assets
+        shell: pwsh
+        run: |
+          $assetsPath = "VPet-Simulator.Windows/obj/project.assets.json"
+          "Facepunch.Steamworks matches:"
+          Select-String -Path $assetsPath -Pattern '"Facepunch\.Steamworks/'
+          "Facepunch.Steamworks.win32 matches:"
+          Select-String -Path $assetsPath -Pattern '"Facepunch\.Steamworks\.win32/'
 
       - name: Build Core
         run: dotnet build VPet-Simulator.Core/VPet-Simulator.Core.csproj -c Release --no-restore -p:EnableWindowsTargeting=true -v:normal
@@ -46,7 +55,7 @@ jobs:
         shell: cmd
         run: |
           type nul > windows-build.log
-          dotnet build VPet-Simulator.Windows/VPet-Simulator.Windows.csproj -c Release --no-restore -p:EnableWindowsTargeting=true -v:diag -bl:windows-build.binlog > windows-build.log 2>&1
+          dotnet build VPet-Simulator.Windows/VPet-Simulator.Windows.csproj -c Release --no-restore -p:EnableWindowsTargeting=true -p:Platform=x64 -v:diag -bl:windows-build.binlog > windows-build.log 2>&1
           set EXIT_CODE=%ERRORLEVEL%
           echo exit_code=%EXIT_CODE%>> %GITHUB_OUTPUT%
           echo dotnet build exit code: %EXIT_CODE%

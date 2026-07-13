@@ -1429,7 +1429,7 @@ namespace VPet_Simulator.Windows
                 }
 
                 //不存在就关掉
-                var modpath = new DirectoryInfo(ModPath + @"\0000_core\pet\vup");
+                var modpath = new DirectoryInfo(Path.Combine(ModPath, "0000_core", "pet", RuntimeFeatures.DefaultPetId));
                 if (!modpath.Exists)
                 {
                     MessageBoxX.Show("缺少模组Core,无法启动桌宠\nMissing module Core, can't start up", "启动错误 boot error", Panuon.WPF.UI.MessageBoxIcon.Error);
@@ -1546,7 +1546,7 @@ namespace VPet_Simulator.Windows
 
             //旧版本设置兼容
             if (Set.PetGraph == "默认虚拟桌宠")
-                Set.PetGraph = "vup";
+                Set.PetGraph = RuntimeFeatures.DefaultPetId;
 
             //当前桌宠动画
             var petloader = Pets.Find(x => x.Name == Set.PetGraph);

@@ -350,7 +350,7 @@ namespace VPet_Simulator.Windows
         /// </summary>
         public string PetGraph
         {
-            get => this["gameconfig"].GetString("petgraph", "vup");
+            get => this["gameconfig"].GetString("petgraph", RuntimeFeatures.DefaultPetId);
             set => this["gameconfig"].SetString("petgraph", value);
         }
 

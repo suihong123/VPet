@@ -47,18 +47,43 @@ jobs:
         run: |
           $logPath = "windows-build.log"
           $binlogPath = "windows-build.binlog"
+          $stdoutPath = "windows-build.stdout.log"
+          $stderrPath = "windows-build.stderr.log"
 
-          Remove-Item -Path $logPath, $binlogPath -Force -ErrorAction SilentlyContinue
+          Remove-Item -Path $logPath, $binlogPath, $stdoutPath, $stderrPath -Force -ErrorAction SilentlyContinue
+          New-Item -Path $logPath -ItemType File -Force | Out-Null
 
-          & dotnet build VPet-Simulator.Windows/VPet-Simulator.Windows.csproj `
-            -c Release `
-            --no-restore `
-            -p:EnableWindowsTargeting=true `
-            -v:diag `
-            "-bl:$binlogPath" *> $logPath
+          $arguments = @(
+            "build",
+            "VPet-Simulator.Windows/VPet-Simulator.Windows.csproj",
+            "-c",
+            "Release",
+            "--no-restore",
+            "-p:EnableWindowsTargeting=true",
+            "-v:diag",
+            "-bl:$binlogPath"
+          )
 
-          $exitCode = $LASTEXITCODE
+          $process = Start-Process `
+            -FilePath "dotnet" `
+            -ArgumentList $arguments `
+            -NoNewWindow `
+            -Wait `
+            -PassThru `
+            -RedirectStandardOutput $stdoutPath `
+            -RedirectStandardError $stderrPath
+
+          $exitCode = $process.ExitCode
           "exit_code=$exitCode" >> $env:GITHUB_OUTPUT
+
+          if (Test-Path $stdoutPath) {
+            Get-Content -Path $stdoutPath | Add-Content -Path $logPath
+          }
+          if (Test-Path $stderrPath) {
+            Add-Content -Path $logPath -Value ""
+            Add-Content -Path $logPath -Value "----- STDERR -----"
+            Get-Content -Path $stderrPath | Add-Content -Path $logPath
+          }
 
           Write-Host "dotnet build exit code: $exitCode"
           Write-Host "Last 300 lines from $logPath:"

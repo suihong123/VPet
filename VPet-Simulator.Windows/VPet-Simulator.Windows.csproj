@@ -133,7 +133,7 @@
 		<None Remove="快捷键通用注解.md" />
 	</ItemGroup>
 	<ItemGroup>
-		<Content Include="mod\**\*.*">
+		<Content Include="mod\**\*.lps;mod\**\*.png;mod\**\*.ttf;mod\**\*.txt;mod\**\*.zlps">
 			<CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
 			<CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory>
 		</Content>

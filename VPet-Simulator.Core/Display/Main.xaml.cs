@@ -2,6 +2,7 @@
 using Panuon.WPF.UI;
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Media;
 using System.Threading;
 using System.Threading.Tasks;
@@ -202,6 +203,7 @@ namespace VPet_Simulator.Core
         {
             InitializeComponent();
             Core = core;
+            MainGrid.LostMouseCapture += MainGrid_LostMouseCapture;
 
             labeldisplaytimer.Elapsed += Labledisplaytimer_Elapsed;
             Event_MoveEnd += (_) => MoveSideHideCheck();
@@ -395,10 +397,25 @@ namespace VPet_Simulator.Core
         /// </summary>
         public Action DefaultPressAction;
         public bool isPress = false;
+        private bool isDragCandidate = false;
+        private bool isDragging = false;
+        private bool suppressClickAfterDrag = false;
+        private Point dragStartScreenPoint;
+        private Point dragLastScreenPoint;
         long presstime;
         private void MainGrid_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
         {
             isPress = true;
+            isDragCandidate = true;
+            isDragging = false;
+            suppressClickAfterDrag = false;
+            dragStartScreenPoint = MainGrid.PointToScreen(e.GetPosition(MainGrid));
+            dragLastScreenPoint = dragStartScreenPoint;
+            var captureSuccess = MainGrid.CaptureMouse();
+            Debug.WriteLine($"Pet drag MouseDown: capture={captureSuccess}");
+            MainGrid.MouseMove -= MainGrid_MouseWave;
+            MainGrid.MouseMove -= MainGrid_MouseMove;
+            MainGrid.MouseMove += MainGrid_MouseMove;
             CountNomal = 0;
             Task.Run(() =>
             {
@@ -408,6 +425,8 @@ namespace VPet_Simulator.Core
                 Point mp = default;
                 Dispatcher.BeginInvoke(new Action(() => mp = Mouse.GetPosition(MainGrid))).Wait();
                 //mp = new Point(mp.X * Core.Controller.ZoomRatio, mp.Y * Core.Controller.ZoomRatio);
+                if (suppressClickAfterDrag)
+                    return;
                 if (isPress && presstime == pth)
                 {//历遍长按事件
                     LastInteractionTime = DateTime.Now;
@@ -441,7 +460,11 @@ namespace VPet_Simulator.Core
         private void MainGrid_MouseLeftButtonUp(object sender, MouseButtonEventArgs e)
         {
             isPress = false;
-            if (DisplayType.Type.ToString().StartsWith("Raised"))
+            var wasDragging = isDragging;
+            var wasRaised = DisplayType.Type.ToString().StartsWith("Raised");
+            EndDirectDrag(!wasRaised);
+            Debug.WriteLine($"Pet drag MouseUp: dragged={wasDragging}");
+            if (wasRaised)
             {
                 MainGrid.MouseMove -= MainGrid_MouseWave;
                 MainGrid.MouseMove -= MainGrid_MouseMove;
@@ -462,11 +485,46 @@ namespace VPet_Simulator.Core
                     SmartMoveTimer.Start();
                 }
             }
-            ((UIElement)e.Source).ReleaseMouseCapture();
+            MainGrid.ReleaseMouseCapture();
         }
 
         private void MainGrid_MouseMove(object sender, MouseEventArgs e)
         {
+            if (isDragCandidate)
+            {
+                if (e.LeftButton != MouseButtonState.Pressed || !isPress)
+                {
+                    EndDirectDrag(true);
+                    return;
+                }
+
+                var currentScreenPoint = MainGrid.PointToScreen(e.GetPosition(MainGrid));
+                var totalX = currentScreenPoint.X - dragStartScreenPoint.X;
+                var totalY = currentScreenPoint.Y - dragStartScreenPoint.Y;
+                if (!isDragging)
+                {
+                    if (Math.Abs(totalX) < SystemParameters.MinimumHorizontalDragDistance &&
+                        Math.Abs(totalY) < SystemParameters.MinimumVerticalDragDistance)
+                        return;
+
+                    isDragging = true;
+                    suppressClickAfterDrag = true;
+                    LastInteractionTime = DateTime.Now;
+                    Debug.WriteLine("Pet drag started.");
+                }
+
+                var deltaX = currentScreenPoint.X - dragLastScreenPoint.X;
+                var deltaY = currentScreenPoint.Y - dragLastScreenPoint.Y;
+                dragLastScreenPoint = currentScreenPoint;
+
+                if (Math.Abs(deltaX) > 0 || Math.Abs(deltaY) > 0)
+                {
+                    Core.Controller.MoveWindows(deltaX / Core.Controller.ZoomRatio, deltaY / Core.Controller.ZoomRatio);
+                    Debug.WriteLine($"Pet drag move: x={deltaX}, y={deltaY}");
+                }
+                return;
+            }
+
             if (!((UIElement)e.Source).CaptureMouse() || !isPress)
             {
                 MainGrid.MouseMove -= MainGrid_MouseWave;
@@ -486,6 +544,27 @@ namespace VPet_Simulator.Core
             Core.Controller.MoveWindows(x, y);
             if (Math.Abs(x) + Math.Abs(y) > 20 && rasetype >= 1)
                 rasetype = 0;
+        }
+
+        private void MainGrid_LostMouseCapture(object sender, MouseEventArgs e)
+        {
+            if (isDragCandidate)
+            {
+                Debug.WriteLine("Pet drag lost mouse capture.");
+                EndDirectDrag(true);
+            }
+        }
+
+        private void EndDirectDrag(bool restoreWaveHandler)
+        {
+            isDragCandidate = false;
+            isDragging = false;
+            if (restoreWaveHandler)
+            {
+                MainGrid.MouseMove -= MainGrid_MouseMove;
+                MainGrid.MouseMove -= MainGrid_MouseWave;
+                MainGrid.MouseMove += MainGrid_MouseWave;
+            }
         }
 
         private void MainGrid_MouseRightButtonDown(object sender, MouseButtonEventArgs e)

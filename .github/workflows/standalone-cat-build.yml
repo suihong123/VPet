@@ -1,0 +1,225 @@
+name: Standalone Cat Build
+
+on:
+  workflow_dispatch:
+    inputs:
+      upload_test_package:
+        description: Upload internal Windows test package
+        required: false
+        default: false
+        type: boolean
+  push:
+    branches:
+      - feature/standalone-cat-mvp
+
+jobs:
+  verify-cat-resources:
+    name: Verify placeholder cat resources
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 8.0.x
+
+      - name: Show .NET info
+        shell: pwsh
+        run: dotnet --info
+
+      - name: Verify default cat configuration
+        shell: pwsh
+        run: |
+          $runtimeFeatures = Get-Content "VPet-Simulator.Windows/RuntimeFeatures.cs" -Raw
+          if ($runtimeFeatures -notmatch 'DefaultPetId\s*=>\s*"cat"') {
+            Write-Error "RuntimeFeatures.DefaultPetId is not cat."
+            exit 1
+          }
+
+          $catSourceConfig = Get-Content "VPet-Simulator.Windows/mod/0000_core/pet/cat.lps" -Raw
+          if ($catSourceConfig -notmatch 'pet#cat:') {
+            Write-Error "Source cat.lps does not declare pet#cat."
+            exit 1
+          }
+          if ($catSourceConfig -notmatch 'path#cat:') {
+            Write-Error "Source cat.lps does not declare path#cat."
+            exit 1
+          }
+
+      - name: Restore Windows x64
+        shell: pwsh
+        run: dotnet restore VPet-Simulator.Windows/VPet-Simulator.Windows.csproj -p:Platform=x64 -p:EnableWindowsTargeting=true
+
+      - name: Build Windows x64
+        id: build-windows
+        shell: pwsh
+        run: |
+          $logPath = "windows-build.log"
+          $binlogPath = "windows-build.binlog"
+
+          dotnet build VPet-Simulator.Windows/VPet-Simulator.Windows.csproj `
+            -c Release `
+            --no-restore `
+            -p:Platform=x64 `
+            -p:EnableWindowsTargeting=true `
+            -v:diag `
+            "-bl:$binlogPath" 2>&1 | Tee-Object -FilePath $logPath
+
+          $buildExitCode = $LASTEXITCODE
+          "exit_code=$buildExitCode" | Out-File -FilePath $env:GITHUB_OUTPUT -Append
+
+          Write-Host "dotnet build exit code: $buildExitCode"
+          Write-Host "Last 300 lines:"
+          Get-Content $logPath -Tail 300
+
+          exit 0
+
+      - name: Upload Windows build diagnostics
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: standalone-cat-build-diagnostics
+          path: |
+            windows-build.log
+            windows-build.binlog
+          if-no-files-found: warn
+          retention-days: 7
+
+      - name: Verify cat resources
+        if: steps.build-windows.outputs.exit_code == '0'
+        shell: pwsh
+        run: |
+          $outputRoots = @(
+            "VPet-Simulator.Windows/bin/x64/Release/net8.0-windows",
+            "VPet-Simulator.Windows/bin/Release/net8.0-windows"
+          )
+          $outputRoot = $outputRoots | Where-Object { Test-Path $_ } | Select-Object -First 1
+          if (-not $outputRoot) {
+            Write-Error "Could not find Windows build output directory."
+            exit 1
+          }
+
+          $catRoot = Join-Path $outputRoot "mod/0000_core/pet/cat"
+          $catConfig = Join-Path $outputRoot "mod/0000_core/pet/cat.lps"
+          if (-not (Test-Path $catConfig)) {
+            Write-Error "Missing cat.lps at $catConfig"
+            exit 1
+          }
+          if (-not (Test-Path $catRoot)) {
+            Write-Error "Missing cat resource directory at $catRoot"
+            exit 1
+          }
+          $catConfigText = Get-Content $catConfig -Raw
+          if ($catConfigText -notmatch 'pet#cat:') {
+            Write-Error "Output cat.lps does not declare pet#cat."
+            exit 1
+          }
+          if ($catConfigText -notmatch 'path#cat:') {
+            Write-Error "Output cat.lps does not declare path#cat."
+            exit 1
+          }
+
+          $pngFiles = Get-ChildItem $catRoot -Recurse -File -Filter *.png | Sort-Object FullName
+          if ($pngFiles.Count -ne 12) {
+            Write-Error "Expected 12 cat PNG files, found $($pngFiles.Count)."
+            exit 1
+          }
+
+          $manifest = "cat-resource-manifest.txt"
+          "output_root=$outputRoot" | Set-Content $manifest
+          "cat_config=mod/0000_core/pet/cat.lps" | Add-Content $manifest
+          "png_count=$($pngFiles.Count)" | Add-Content $manifest
+          Get-Item $catConfig | ForEach-Object {
+            "mod/0000_core/pet/cat.lps`t$($_.Length)" | Add-Content $manifest
+          }
+          $pngFiles | ForEach-Object {
+            $relative = $_.FullName.Substring((Resolve-Path $outputRoot).Path.Length + 1).Replace('\', '/')
+            "$relative`t$($_.Length)" | Add-Content $manifest
+          }
+
+          Get-Content $manifest
+
+      - name: Upload cat resource manifest
+        if: steps.build-windows.outputs.exit_code == '0'
+        uses: actions/upload-artifact@v4
+        with:
+          name: cat-resource-manifest
+          path: cat-resource-manifest.txt
+          retention-days: 7
+
+      - name: Prepare internal Windows test package
+        if: github.event_name == 'workflow_dispatch' && inputs.upload_test_package == true && steps.build-windows.outputs.exit_code == '0'
+        shell: pwsh
+        run: |
+          $outputRoots = @(
+            "VPet-Simulator.Windows/bin/x64/Release/net8.0-windows",
+            "VPet-Simulator.Windows/bin/Release/net8.0-windows"
+          )
+          $outputRoot = $outputRoots | Where-Object { Test-Path $_ } | Select-Object -First 1
+          if (-not $outputRoot) {
+            Write-Error "Could not find Windows build output directory."
+            exit 1
+          }
+
+          $packageRoot = "standalone-cat-windows-x64-test"
+          if (Test-Path $packageRoot) {
+            Remove-Item $packageRoot -Recurse -Force
+          }
+          New-Item -ItemType Directory -Path $packageRoot | Out-Null
+
+          Copy-Item -Path (Join-Path $outputRoot "*") -Destination $packageRoot -Recurse -Force
+          Get-ChildItem $packageRoot -Recurse -Force -Include *.pdb,*.binlog | Remove-Item -Force
+
+          @"
+          Internal Windows Runtime Test Package
+          =====================================
+
+          This package is only for internal technical validation.
+          It is not a formal release build.
+          Do not sell, publish, promote, or redistribute this package.
+
+          This package may still contain upstream project structure, original sample assets,
+          and other resources that are not cleared for commercial distribution.
+
+          Steam is disabled by runtime feature flags. Closing Steam before first launch is not required.
+
+          Recommended test environment:
+          - Windows 10/11 x64
+          - .NET 8 Desktop Runtime installed
+
+          If the app does not start and Windows reports a missing runtime, install the Microsoft
+          .NET 8 Desktop Runtime for x64, then try again.
+
+          Report startup errors with:
+          - Windows version
+          - whether .NET 8 Desktop Runtime is installed
+          - whether Steam is installed/running
+          - screenshots of any error dialogs
+          - local logs from the application directory or user profile, if generated
+          - Windows Event Viewer application error details, if present
+          "@ | Set-Content -Path (Join-Path $packageRoot "INTERNAL-TEST-README.txt")
+
+          Write-Host "Prepared package files:"
+          Get-ChildItem $packageRoot -Recurse -File | Select-Object FullName, Length
+
+      - name: Upload internal Windows test package
+        if: github.event_name == 'workflow_dispatch' && inputs.upload_test_package == true && steps.build-windows.outputs.exit_code == '0'
+        uses: actions/upload-artifact@v4
+        with:
+          name: standalone-cat-windows-x64-test
+          path: standalone-cat-windows-x64-test
+          retention-days: 3
+
+      - name: Fail if Windows build failed
+        if: always()
+        shell: pwsh
+        run: |
+          $exitCode = '${{ steps.build-windows.outputs.exit_code }}'
+          Write-Host "Captured Windows build exit code: $exitCode"
+
+          if ($exitCode -ne '0') {
+            exit 1
+          }

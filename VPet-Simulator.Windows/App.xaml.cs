@@ -6,6 +6,7 @@ using System.Linq;
 using System.Reflection;
 using System.Windows;
 using System.Windows.Interop;
+using VPet_Simulator.Core;
 using VPet_Simulator.Windows.Interface;
 
 namespace VPet_Simulator.Windows
@@ -19,6 +20,7 @@ namespace VPet_Simulator.Windows
         {
             Environment.CurrentDirectory =
                 Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location)!;
+            StandaloneDebugLogger.Log("[StandaloneDebug] Standalone startup");
 #if !DEBUG
             base.DispatcherUnhandledException += (s, e) => { e.Handled = true; UnhandledException(e.Exception, false); };
             AppDomain.CurrentDomain.UnhandledException += (s, e) => { UnhandledException((e.ExceptionObject as Exception), true); };
@@ -69,6 +71,7 @@ namespace VPet_Simulator.Windows
         HashSet<string> ErrorReport = new HashSet<string>();
         private void UnhandledException(Exception e, bool isFatality)
         {
+            StandaloneDebugLogger.Log($"[StandaloneDebug] Exception:\n{e}");
             var expt = e.ToString();
             if (ErrorReport.Contains(expt))
                 return;//防止重复报错

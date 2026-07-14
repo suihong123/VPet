@@ -405,7 +405,7 @@ namespace VPet_Simulator.Windows
                             {
                                 if (loadfile[tmpfi.Name][(gbol)"ignoreError"])
                                     continue;
-                                Trace.WriteLine(e.ToString());
+                                StandaloneDebugLogger.Log($"[StandaloneDebug] Exception:\n{e}");
                                 ErrorMessage = e.ToString();
                                 SuccessLoad = false;
                             }
@@ -419,13 +419,13 @@ namespace VPet_Simulator.Windows
             }
             catch (Exception e)
             {
-                Trace.WriteLine(e.ToString());
+                StandaloneDebugLogger.Log($"[StandaloneDebug] Exception:\n{e}");
                 ErrorMessage = e.ToString();
                 Tag.Add("该模组已损坏");
                 SuccessLoad = false;
             }
 #endif
-            Trace.WriteLine(
+            StandaloneDebugLogger.Log(
                 $"[StandaloneDebug]\nMOD Path: {directory.FullName}\nSuccessLoad: {SuccessLoad}\nErrorMessage: {ErrorMessage}\nPets Count: {mw.Pets.Count}");
         }
         public bool IsOnMOD(MainWindow mw) => mw.Set.IsOnMod(Name);

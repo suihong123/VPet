@@ -90,12 +90,12 @@ namespace VPet_Simulator.Core
                         IGraph ig3 = ig2[i];
                         var loadStopwatch = Stopwatch.StartNew();
                         var slowGraphLogged = false;
-                        Trace.WriteLine($"[StandaloneDebug]\nLoading Graph:\n{ig3.Path}");
+                        StandaloneDebugLogger.Log($"[StandaloneDebug] Loading Graph: {ig3.Path}");
                         while (!ig3.IsReady)
                         {
                             if (!slowGraphLogged && loadStopwatch.Elapsed >= TimeSpan.FromSeconds(5))
                             {
-                                Trace.WriteLine($"[StandaloneDebug]\nSlow Graph:\n{ig3.Path}");
+                                StandaloneDebugLogger.Log($"[StandaloneDebug] Slow Graph: {ig3.Path}");
                                 slowGraphLogged = true;
                             }
                             if (ig3.IsFail)
@@ -107,7 +107,7 @@ namespace VPet_Simulator.Core
                             else
                                 await Task.Delay(100);
                         }
-                        Trace.WriteLine($"[StandaloneDebug]\nLoaded Graph:\n{ig3.Path}");
+                        StandaloneDebugLogger.Log($"[StandaloneDebug] Loaded Graph: {ig3.Path}");
                     }
                 }
             }
@@ -139,12 +139,12 @@ namespace VPet_Simulator.Core
                         {
                             var loadStopwatch = Stopwatch.StartNew();
                             var slowGraphLogged = false;
-                            Trace.WriteLine($"[StandaloneDebug]\nLoading Graph:\n{ig3.Path}");
+                            StandaloneDebugLogger.Log($"[StandaloneDebug] Loading Graph: {ig3.Path}");
                             while (!ig3.IsReady)
                             {
                                 if (!slowGraphLogged && loadStopwatch.Elapsed >= TimeSpan.FromSeconds(5))
                                 {
-                                    Trace.WriteLine($"[StandaloneDebug]\nSlow Graph:\n{ig3.Path}");
+                                    StandaloneDebugLogger.Log($"[StandaloneDebug] Slow Graph: {ig3.Path}");
                                     slowGraphLogged = true;
                                 }
                                 if (ig3.IsFail)
@@ -161,7 +161,7 @@ namespace VPet_Simulator.Core
                                     await Task.Delay(100);
                                 }
                             }
-                            Trace.WriteLine($"[StandaloneDebug]\nLoaded Graph:\n{ig3.Path}");
+                            StandaloneDebugLogger.Log($"[StandaloneDebug] Loaded Graph: {ig3.Path}");
                             Interlocked.Increment(ref count);
                             if (start < DateTime.Now)
                             {

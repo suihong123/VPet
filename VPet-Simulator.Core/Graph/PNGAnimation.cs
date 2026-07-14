@@ -120,12 +120,12 @@ namespace VPet_Simulator.Core
         {
             var loadStopwatch = Stopwatch.StartNew();
             var slowGraphLogged = false;
-            Trace.WriteLine($"[StandaloneDebug]\nLoading Graph:\n{path}");
+            StandaloneDebugLogger.Log($"[StandaloneDebug] Loading Graph: {path}");
             while (Function.MemoryUsage() > MaxLoadMemory)
             {
                 if (!slowGraphLogged && loadStopwatch.Elapsed >= TimeSpan.FromSeconds(5))
                 {
-                    Trace.WriteLine($"[StandaloneDebug]\nSlow Graph:\n{path}");
+                    StandaloneDebugLogger.Log($"[StandaloneDebug] Slow Graph: {path}");
                     slowGraphLogged = true;
                 }
                 await Task.Delay(100);
@@ -137,7 +137,15 @@ namespace VPet_Simulator.Core
                 Path = System.IO.Path.Combine(GraphCore.CachePath, $"{GraphCore.Resolution}_{Math.Abs(Sub.GetHashCode(path))}_{paths.Length}.png");
                 if (!File.Exists(Path) && !((List<string>)GraphCore.CommConfig["Cache"]).Contains(path))
                 {
-                    Trace.WriteLine($"[StandaloneDebug]\nBegin Generate Cache\n{path}");
+                    var cacheStopwatch = Stopwatch.StartNew();
+                    var cacheFinished = 0;
+                    _ = Task.Delay(TimeSpan.FromSeconds(5)).ContinueWith(_ =>
+                    {
+                        if (Volatile.Read(ref cacheFinished) == 0)
+                            StandaloneDebugLogger.Log(
+                                $"[StandaloneDebug] Slow Generate Cache: {path}\nElapsed: {cacheStopwatch.Elapsed}");
+                    });
+                    StandaloneDebugLogger.Log($"[StandaloneDebug] Begin Generate Cache: {path}");
                     ((List<string>)GraphCore.CommConfig["Cache"]).Add(path);
                     int w = 0;
                     int h = 0;
@@ -199,7 +207,9 @@ namespace VPet_Simulator.Core
                             data.SaveTo(stream);
                         }
                     }
-                    Trace.WriteLine($"[StandaloneDebug]\nCache Finished\n{path}");
+                    Interlocked.Exchange(ref cacheFinished, 1);
+                    StandaloneDebugLogger.Log(
+                        $"[StandaloneDebug] Cache Finished: {path}\nElapsed: {cacheStopwatch.Elapsed}");
                 }
 
                 if (FrameWidth == 0 || FrameHeight == 0)
@@ -233,14 +243,14 @@ namespace VPet_Simulator.Core
                 //stream = new MemoryStream(File.ReadAllBytes(cp));
                 IsReady = true;
                 if (!slowGraphLogged && loadStopwatch.Elapsed >= TimeSpan.FromSeconds(5))
-                    Trace.WriteLine($"[StandaloneDebug]\nSlow Graph:\n{path}");
-                Trace.WriteLine($"[StandaloneDebug]\nLoaded Graph:\n{path}");
+                    StandaloneDebugLogger.Log($"[StandaloneDebug] Slow Graph: {path}");
+                StandaloneDebugLogger.Log($"[StandaloneDebug] Loaded Graph: {path}");
             }
             catch (Exception e)
             {
                 IsFail = true;
                 FailMessage = $"--PNGAnimation--{GraphInfo}--\nPath: {path}\n{e}";
-                Trace.WriteLine(e.ToString());
+                StandaloneDebugLogger.Log($"[StandaloneDebug] Exception:\n{e}");
             }
         }
 

@@ -88,8 +88,16 @@ namespace VPet_Simulator.Core
                     for (int i = 0; i < ig2.Count; i++)
                     {
                         IGraph ig3 = ig2[i];
+                        var loadStopwatch = Stopwatch.StartNew();
+                        var slowGraphLogged = false;
+                        Trace.WriteLine($"[StandaloneDebug]\nLoading Graph:\n{ig3.Path}");
                         while (!ig3.IsReady)
                         {
+                            if (!slowGraphLogged && loadStopwatch.Elapsed >= TimeSpan.FromSeconds(5))
+                            {
+                                Trace.WriteLine($"[StandaloneDebug]\nSlow Graph:\n{ig3.Path}");
+                                slowGraphLogged = true;
+                            }
                             if (ig3.IsFail)
                             {
                                 ErrorMessage.Add(ig3.FailMessage);
@@ -99,6 +107,7 @@ namespace VPet_Simulator.Core
                             else
                                 await Task.Delay(100);
                         }
+                        Trace.WriteLine($"[StandaloneDebug]\nLoaded Graph:\n{ig3.Path}");
                     }
                 }
             }
@@ -128,8 +137,16 @@ namespace VPet_Simulator.Core
                         IGraph ig3 = ig2[i];
                         tasks.Add(Task.Run(async () =>
                         {
+                            var loadStopwatch = Stopwatch.StartNew();
+                            var slowGraphLogged = false;
+                            Trace.WriteLine($"[StandaloneDebug]\nLoading Graph:\n{ig3.Path}");
                             while (!ig3.IsReady)
                             {
+                                if (!slowGraphLogged && loadStopwatch.Elapsed >= TimeSpan.FromSeconds(5))
+                                {
+                                    Trace.WriteLine($"[StandaloneDebug]\nSlow Graph:\n{ig3.Path}");
+                                    slowGraphLogged = true;
+                                }
                                 if (ig3.IsFail)
                                 {
                                     lock (ErrorMessage) // 确保线程安全
@@ -144,6 +161,7 @@ namespace VPet_Simulator.Core
                                     await Task.Delay(100);
                                 }
                             }
+                            Trace.WriteLine($"[StandaloneDebug]\nLoaded Graph:\n{ig3.Path}");
                             Interlocked.Increment(ref count);
                             if (start < DateTime.Now)
                             {

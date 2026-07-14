@@ -2,6 +2,7 @@
 using SkiaSharp;
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Drawing;
 using System.IO;
 using System.Threading;
@@ -117,8 +118,16 @@ namespace VPet_Simulator.Core
 
         private async void startup(string path, FileInfo[] paths)
         {
+            var loadStopwatch = Stopwatch.StartNew();
+            var slowGraphLogged = false;
+            Trace.WriteLine($"[StandaloneDebug]\nLoading Graph:\n{path}");
             while (Function.MemoryUsage() > MaxLoadMemory)
             {
+                if (!slowGraphLogged && loadStopwatch.Elapsed >= TimeSpan.FromSeconds(5))
+                {
+                    Trace.WriteLine($"[StandaloneDebug]\nSlow Graph:\n{path}");
+                    slowGraphLogged = true;
+                }
                 await Task.Delay(100);
             }
             try
@@ -128,6 +137,7 @@ namespace VPet_Simulator.Core
                 Path = System.IO.Path.Combine(GraphCore.CachePath, $"{GraphCore.Resolution}_{Math.Abs(Sub.GetHashCode(path))}_{paths.Length}.png");
                 if (!File.Exists(Path) && !((List<string>)GraphCore.CommConfig["Cache"]).Contains(path))
                 {
+                    Trace.WriteLine($"[StandaloneDebug]\nBegin Generate Cache\n{path}");
                     ((List<string>)GraphCore.CommConfig["Cache"]).Add(path);
                     int w = 0;
                     int h = 0;
@@ -189,6 +199,7 @@ namespace VPet_Simulator.Core
                             data.SaveTo(stream);
                         }
                     }
+                    Trace.WriteLine($"[StandaloneDebug]\nCache Finished\n{path}");
                 }
 
                 if (FrameWidth == 0 || FrameHeight == 0)
@@ -221,11 +232,15 @@ namespace VPet_Simulator.Core
                 }
                 //stream = new MemoryStream(File.ReadAllBytes(cp));
                 IsReady = true;
+                if (!slowGraphLogged && loadStopwatch.Elapsed >= TimeSpan.FromSeconds(5))
+                    Trace.WriteLine($"[StandaloneDebug]\nSlow Graph:\n{path}");
+                Trace.WriteLine($"[StandaloneDebug]\nLoaded Graph:\n{path}");
             }
             catch (Exception e)
             {
                 IsFail = true;
-                FailMessage = $"--PNGAnimation--{GraphInfo}--\nPath: {path}\n{e.Message}";
+                FailMessage = $"--PNGAnimation--{GraphInfo}--\nPath: {path}\n{e}";
+                Trace.WriteLine(e.ToString());
             }
         }
 

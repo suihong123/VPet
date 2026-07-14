@@ -1377,6 +1377,7 @@ namespace VPet_Simulator.Windows
                 };
 
                 InitializeComponent();
+                Title = RuntimeFeatures.StandaloneMode ? "Coco Cat" : "MainWindow";
 
                 //MGrid.Height = 500 * Set.ZoomLevel;
                 MGrid.Width = 500 * Set.ZoomLevel;
@@ -1448,7 +1449,9 @@ namespace VPet_Simulator.Windows
             {
                 string errstr = "游戏发生错误,可能是".Translate() + (string.IsNullOrWhiteSpace(CoreMOD.NowLoading) ?
               "游戏或者MOD".Translate() : $"MOD({CoreMOD.NowLoading})") +
-              "导致的\n如有可能请发送 错误信息截图和引发错误之前的操作 给开发者:service@exlb.net\n感谢您对游戏开发的支持\n".Translate()
+              (RuntimeFeatures.StandaloneMode
+                  ? "导致的\n请保留错误信息截图和本地日志，以便排查问题。\n"
+                  : "导致的\n如有可能请发送 错误信息截图和引发错误之前的操作 给开发者:service@exlb.net\n感谢您对游戏开发的支持\n".Translate())
               + e.ToString();
                 MessageBoxX.Show(errstr, "游戏致命性错误".Translate() + ' ' + "启动错误".Translate(), Panuon.WPF.UI.MessageBoxIcon.Error);
                 Close();
@@ -1717,7 +1720,9 @@ namespace VPet_Simulator.Windows
             //"这游戏开发这么慢,都怪画师太咕了".Translate(),
             //"欢迎加入 虚拟主播模拟器群 430081239".Translate()
 
-            await Dispatcher.InvokeAsync(new Action(() => LoadingText.Content = "尝试加载Steam内容".Translate()));
+            await Dispatcher.InvokeAsync(new Action(() => LoadingText.Content = RuntimeFeatures.StandaloneMode
+                ? "正在加载 Coco Cat"
+                : "尝试加载Steam内容".Translate()));
             //给正在玩这个游戏的主播/游戏up主做个小功能
             if (IsSteamUser)
             {
@@ -2183,7 +2188,7 @@ namespace VPet_Simulator.Windows
 
                   //加载图标
                   notifyIcon = new NotifyIcon();
-                  notifyIcon.Text = "虚拟桌宠模拟器".Translate() + PrefixSave;
+                  notifyIcon.Text = (RuntimeFeatures.StandaloneMode ? "Coco Cat" : "虚拟桌宠模拟器".Translate()) + PrefixSave;
                   ContextMenu m_menu;
 
                   if (Set.PetHelper)
@@ -2507,18 +2512,26 @@ namespace VPet_Simulator.Windows
                   foreach (CoreMOD cm in CoreMODs)
                       if (!cm.SuccessLoad)
                           if (cm.Tag.Contains("该模组已损坏"))
-                              MessageBoxX.Show("模组 {0} 插件损坏\n虚拟桌宠模拟器未能成功加载该插件\n请联系MOD作者修复该问题".Translate(cm.Name) + '\n' + cm.ErrorMessage, "该模组已损坏".Translate());
+                              MessageBoxX.Show((RuntimeFeatures.StandaloneMode
+                                  ? $"模组 {cm.Name} 插件损坏\nCoco Cat 未能成功加载该插件\n请联系 MOD 作者修复该问题"
+                                  : "模组 {0} 插件损坏\n虚拟桌宠模拟器未能成功加载该插件\n请联系MOD作者修复该问题".Translate(cm.Name)) + '\n' + cm.ErrorMessage, "该模组已损坏".Translate());
                           else if (Set.IsPassMOD(cm.Name) || !string.IsNullOrEmpty(cm.ErrorMessage))
-                              MessageBoxX.Show("模组 {0} 的代码插件损坏\n虚拟桌宠模拟器未能成功加载该插件\n请联系MOD作者修复该问题".Translate(cm.Name) + '\n' + cm.ErrorMessage, "{0} 未加载代码插件".Translate(cm.Name));
+                              MessageBoxX.Show((RuntimeFeatures.StandaloneMode
+                                  ? $"模组 {cm.Name} 的代码插件损坏\nCoco Cat 未能成功加载该插件\n请联系 MOD 作者修复该问题"
+                                  : "模组 {0} 的代码插件损坏\n虚拟桌宠模拟器未能成功加载该插件\n请联系MOD作者修复该问题".Translate(cm.Name)) + '\n' + cm.ErrorMessage, "{0} 未加载代码插件".Translate(cm.Name));
                           else if (Set.IsMSGMOD(cm.Name))
-                              MessageBoxX.Show("由于 {0} 包含代码插件\n虚拟桌宠模拟器已自动停止加载该插件\n请手动前往设置允许启用该mod 代码插件".Translate(cm.Name), "{0} 未加载代码插件".Translate(cm.Name));
+                              MessageBoxX.Show(RuntimeFeatures.StandaloneMode
+                                  ? $"由于 {cm.Name} 包含代码插件\nCoco Cat 已自动停止加载该插件\n请手动前往设置允许启用该 MOD 代码插件"
+                                  : "由于 {0} 包含代码插件\n虚拟桌宠模拟器已自动停止加载该插件\n请手动前往设置允许启用该mod 代码插件".Translate(cm.Name), "{0} 未加载代码插件".Translate(cm.Name));
                   //动画错误
                   if (Main.ErrorMessage.Count != 0)
                   {
                       var errstr = string.Join("\n------\n", Main.ErrorMessage);
                       if (errstr.Contains("0000_core"))
                       {
-                          MessageBoxX.Show("动画加载错误,请尝试以下解决方法修复问题:\n\t1. 删除游戏根目录`Cache`文件夹\n\t2. 删除游戏根目录`mod\\0000_core\\pet`文件夹,并在Steam验证游戏完整性".Translate(), "动画加载错误".Translate());
+                          MessageBoxX.Show(RuntimeFeatures.StandaloneMode
+                              ? "动画加载错误，请尝试删除程序目录中的 Cache 文件夹后重新启动。"
+                              : "动画加载错误,请尝试以下解决方法修复问题:\n\t1. 删除游戏根目录`Cache`文件夹\n\t2. 删除游戏根目录`mod\\0000_core\\pet`文件夹,并在Steam验证游戏完整性".Translate(), "动画加载错误".Translate());
                           if (RuntimeFeatures.EnableTelemetry)
                           {
                               var winrep = new winReport(this, errstr);
@@ -2527,7 +2540,9 @@ namespace VPet_Simulator.Windows
                           }
                       }
                       else
-                          MessageBoxX.Show("动画加载错误\n虚拟桌宠模拟器未能成功加载该动画\n请联系MOD作者修复该问题".Translate() + '\n' + errstr, "动画加载错误".Translate());
+                          MessageBoxX.Show((RuntimeFeatures.StandaloneMode
+                              ? "动画加载错误\nCoco Cat 未能成功加载该动画\n请联系 MOD 作者修复该问题"
+                              : "动画加载错误\n虚拟桌宠模拟器未能成功加载该动画\n请联系MOD作者修复该问题".Translate()) + '\n' + errstr, "动画加载错误".Translate());
 
                       Main.ErrorMessage.Clear();
                   }

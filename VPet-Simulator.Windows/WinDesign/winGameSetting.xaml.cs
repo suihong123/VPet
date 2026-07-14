@@ -45,7 +45,9 @@ namespace VPet_Simulator.Windows
             ////ImageWHY.Source = bit;
             //Console.WriteLine(DateTime.Now.ToString("mm:ss.fff"));
 
-            Title = "设置".Translate() + ' ' + mw.PrefixSave;
+            Title = RuntimeFeatures.StandaloneMode
+                ? "Coco Cat - " + "设置".Translate() + mw.PrefixSave
+                : "设置".Translate() + ' ' + mw.PrefixSave;
             SettingMenuWidth.Width = new GridLength(LocalizeCore.GetDouble("SettingMenuWidth", 150));
             TopMostBox.IsChecked = mw.Set.TopMost;
             if (mw.Set.IsBiggerScreen)
@@ -75,6 +77,18 @@ namespace VPet_Simulator.Windows
 
             StartUpBox.IsChecked = mw.Set.StartUPBoot;
             StartUpSteamBox.IsChecked = mw.Set.StartUPBootSteam;
+            if (RuntimeFeatures.StandaloneMode)
+            {
+                StartUpSteamBox.Visibility = Visibility.Collapsed;
+                Grid.SetColumnSpan(StartUpBox, 2);
+                runBackupDescription.Text = "Coco Cat 会在保存时备份上一次存档，以便在存档丢失或损坏时还原。";
+                runDiagnosisDescription.Text = "独立模式已关闭诊断数据上传，本地日志仍会保留。";
+                ButtonPublish.Visibility = Visibility.Collapsed;
+                ButtonSteam.Visibility = Visibility.Collapsed;
+                ImageMOD.Visibility = Visibility.Collapsed;
+                LegacyAboutPanel.Visibility = Visibility.Collapsed;
+                StandaloneAboutPanel.Visibility = Visibility.Visible;
+            }
             TextBoxPetName.Text = mw.Core.Save.Name;
             foreach (PetLoader pl in mw.Pets)
             {
@@ -618,7 +632,9 @@ namespace VPet_Simulator.Windows
         {
             if (mod.Name == "Core")
             {
-                MessageBoxX.Show("模组 Core 为<虚拟桌宠模拟器>核心文件,无法停用".Translate(), "停用失败".Translate());
+                MessageBoxX.Show(RuntimeFeatures.StandaloneMode
+                    ? "Core 是 Coco Cat 的核心模组，无法停用。"
+                    : "模组 Core 为<虚拟桌宠模拟器>核心文件,无法停用".Translate(), "停用失败".Translate());
                 return;
             }
             else if (CoreMOD.OnModDefList.Contains(mod.Name))
@@ -765,7 +781,10 @@ namespace VPet_Simulator.Windows
 
         private void ButtonRestart_Click(object sender, RoutedEventArgs e)
         {
-            if (MessageBoxX.Show("是否退出游戏<虚拟桌宠模拟器>?\n请注意保存游戏".Translate(), "重启游戏".Translate(), MessageBoxButton.YesNo, MessageBoxIcon.Warning) == MessageBoxResult.Yes)
+            var restartMessage = RuntimeFeatures.StandaloneMode
+                ? "是否退出并重启 Coco Cat？\n请注意保存当前设置。"
+                : "是否退出游戏<虚拟桌宠模拟器>?\n请注意保存游戏".Translate();
+            if (MessageBoxX.Show(restartMessage, "重启游戏".Translate(), MessageBoxButton.YesNo, MessageBoxIcon.Warning) == MessageBoxResult.Yes)
             {
                 mw.Restart();
             }
@@ -964,7 +983,8 @@ namespace VPet_Simulator.Windows
         public void GenStartUP()
         {
             mw.Set["v"][(gbol)"newverstartup"] = true;
-            var path = Environment.GetFolderPath(Environment.SpecialFolder.Startup) + @"\VPET_Simulator.lnk";
+            var shortcutName = RuntimeFeatures.StandaloneMode ? "Coco_Cat.lnk" : "VPET_Simulator.lnk";
+            var path = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.Startup), shortcutName);
             if (mw.Set.StartUPBoot)
             {
                 if (File.Exists(path))
@@ -978,7 +998,7 @@ namespace VPet_Simulator.Windows
                 else
                     link.SetPath(System.Reflection.Assembly.GetExecutingAssembly().Location.Replace(".dll", ".exe"));
 
-                link.SetDescription("VPet Simulator");
+                link.SetDescription(RuntimeFeatures.StandaloneMode ? "Coco Cat" : "VPet Simulator");
                 link.SetIconLocation(ExtensionValue.BaseDirectory + @"vpeticon.ico", 0);
                 try
                 {
@@ -1367,7 +1387,9 @@ namespace VPet_Simulator.Windows
                                     mw.Main.State = Main.WorkingState.Nomal;
                                 }
                                 if (!mw.SavesLoad(new LPS(File.ReadAllText(path))))
-                                    MessageBoxX.Show("存档损毁,无法加载该存档\n可能是上次储存出错或Steam云同步导致的\n请在设置中加载备份还原存档", "存档损毁".Translate());
+                                    MessageBoxX.Show(RuntimeFeatures.StandaloneMode
+                                        ? "存档损毁，无法加载该存档。请在设置中加载备份还原存档。"
+                                        : "存档损毁,无法加载该存档\n可能是上次储存出错或Steam云同步导致的\n请在设置中加载备份还原存档", "存档损毁".Translate());
                             }
                             catch (Exception ex)
                             {

@@ -348,7 +348,7 @@
                         <TextBlock Margin="0,6,0,0" HorizontalAlignment="Left" VerticalAlignment="Top"
                                 Background="{x:Null}" TextWrapping="Wrap">
                             <Run FontSize="18" FontWeight="Bold" Text="{ll:Str 从备份中还原}" /><LineBreak />
-                            <Run Text="{ll:Str '虚拟桌宠模拟器在每次保存的时候都会备份上次储存的存档, 当原始存档丢失,受损或误操作时, 就可以还原他们'}" />
+                            <Run x:Name="runBackupDescription" Text="{ll:Str '虚拟桌宠模拟器在每次保存的时候都会备份上次储存的存档, 当原始存档丢失,受损或误操作时, 就可以还原他们'}" />
                         </TextBlock>
                         <Grid Margin="0,5,0,0">
                             <Grid.RowDefinitions>
@@ -879,7 +879,7 @@
                         <TextBlock HorizontalAlignment="Left" VerticalAlignment="Top" Background="{x:Null}"
                                 FontSize="13" TextWrapping="Wrap" Margin="0,20,0,0">
                             <Run FontSize="18" FontWeight="Bold" Text="{ll:Str 诊断与反馈}" /> <LineBreak />
-                            <Run Text="{ll:Str '选择要发送给 LBGame 的诊断数据,诊断数据用于保护和及时更新 虚拟桌宠模拟器, 解决问题并改进产品.'}" /><LineBreak />
+                            <Run x:Name="runDiagnosisDescription" Text="{ll:Str '选择要发送给 LBGame 的诊断数据,诊断数据用于保护和及时更新 虚拟桌宠模拟器, 解决问题并改进产品.'}" /><LineBreak />
                             <Run Text="{ll:Str '无论选择哪个选项,游戏都可以安全正常地运行.'}" /> <Hyperlink Click="hyper_moreInfo">
                                 <Run Text="{ll:Str 获取有关这些设置的更多信息}" />
                             </Hyperlink>
@@ -1028,6 +1028,7 @@
             <TabItem BorderBrush="{DynamicResource PrimaryDarker}" Foreground="{DynamicResource PrimaryText}"
                     Header="{ll:Str '关于'}">
                 <Grid>
+                <Grid x:Name="LegacyAboutPanel">
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="Auto" />
                         <ColumnDefinition Width="1*" />
@@ -1109,6 +1110,13 @@
                              <Run x:Name="run_BC" Text="" />
                          </Hyperlink>
                     </TextBlock>
+                </Grid>
+                <StackPanel x:Name="StandaloneAboutPanel" HorizontalAlignment="Center" VerticalAlignment="Center"
+                        Visibility="Collapsed">
+                    <TextBlock HorizontalAlignment="Center" FontSize="28" FontWeight="Bold" Text="Coco Cat" />
+                    <TextBlock Margin="0,12,0,0" HorizontalAlignment="Center" FontSize="16"
+                            Text="Powered by open source community" />
+                </StackPanel>
                 </Grid>
             </TabItem>
         </TabControl>

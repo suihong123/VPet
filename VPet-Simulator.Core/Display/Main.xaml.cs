@@ -557,6 +557,7 @@ namespace VPet_Simulator.Core
 
         private void EndDirectDrag(bool restoreWaveHandler)
         {
+            isPress = false;
             isDragCandidate = false;
             isDragging = false;
             if (restoreWaveHandler)

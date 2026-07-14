@@ -1525,7 +1525,10 @@ namespace VPet_Simulator.Windows
                 if (!File.Exists(di.FullName + @"\info.lps"))
                     continue;
                 await Dispatcher.InvokeAsync(new Action(() => LoadingText.Content = $"Loading MOD: {di.Name}"));
-                CoreMODs.Add(new CoreMOD(di, this));
+                var coreMod = new CoreMOD(di, this);
+                CoreMODs.Add(coreMod);
+                Trace.WriteLine(
+                    $"[StandaloneDebug]\nCoreMOD Loaded: {di.FullName}\nSuccessLoad: {coreMod.SuccessLoad}\nPets Count: {Pets.Count}");
             }
 
             CoreMOD.NowLoading = null;
@@ -1558,7 +1561,12 @@ namespace VPet_Simulator.Windows
                 Set.PetGraph = RuntimeFeatures.DefaultPetId;
 
             //当前桌宠动画
+            Trace.WriteLine(
+                $"[StandaloneDebug]\nSelecting Pet: {Set.PetGraph}\nPets Count: {Pets.Count}");
             var petloader = Pets.Find(x => x.Name == Set.PetGraph);
+            Trace.WriteLine($"[StandaloneDebug]\nPets Count: {Pets.Count}");
+            if (Pets.Count == 0)
+                Trace.WriteLine("[StandaloneDebug]\nNo pets loaded");
             petloader ??= Pets[0];
             //去除其他语言内容
             var tag = petloader.Config.Data.GetString("tag", "all").Split(',');
@@ -2788,6 +2796,9 @@ namespace VPet_Simulator.Windows
         public void HostBDay()
         {
             var petloader = Pets.Find(x => x.Name == Set.PetGraph);
+            Trace.WriteLine($"[StandaloneDebug]\nPets Count: {Pets.Count}");
+            if (Pets.Count == 0)
+                Trace.WriteLine("[StandaloneDebug]\nNo pets loaded");
             petloader ??= Pets[0];
 
             string sbv = "Special_Birthday_Voice_" + petloader.Name;

@@ -425,6 +425,14 @@ namespace VPet_Simulator.Core
             }
 
             int walklength = 0;
+
+            private AnimatType ResolveAnimatType(Main main, AnimatType preferred)
+            {
+                return main.Core.Graph.FindGraph(Graph, preferred, main.Core.Save.Mode) == null
+                    ? AnimatType.Single
+                    : preferred;
+            }
+
             /// <summary>
             /// 获取兼容支持下个播放的移动
             /// </summary>
@@ -468,7 +476,7 @@ namespace VPet_Simulator.Core
                 m.Event_MoveStartInvoke(this);
                 walklength = 0;
                 m.CountNomal = 0;
-                m.Display(Graph, AnimatType.A_Start, () =>
+                m.Display(Graph, ResolveAnimatType(m, AnimatType.A_Start), () =>
                 {
                     if (m.MoveTimerSmartMove)
                     {
@@ -518,7 +526,7 @@ namespace VPet_Simulator.Core
                 //不是:继续右边走or停下
                 if (Function.Rnd.Next(walklength++) < Distance)
                 {
-                    m.Display(Graph, AnimatType.B_Loop, () => Displaying(m));
+                    m.Display(Graph, ResolveAnimatType(m, AnimatType.B_Loop), () => Displaying(m));
                     return;
                 }
                 else if (Function.Rnd.Next(Main.TreeRND) <= 1)
@@ -540,7 +548,7 @@ namespace VPet_Simulator.Core
                 m.Core.Controller.RePositionActive = !m.Core.Controller.CheckPosition();
                 m.MoveTimer.Enabled = false;
 
-                m.Display(Graph, AnimatType.C_End, () => { m.Event_MoveEndInvoke(this); m.DisplayToNomal(); });
+                m.Display(Graph, ResolveAnimatType(m, AnimatType.C_End), () => { m.Event_MoveEndInvoke(this); m.DisplayToNomal(); });
             }
         }
 

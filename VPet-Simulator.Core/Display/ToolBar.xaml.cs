@@ -23,6 +23,7 @@ namespace VPet_Simulator.Core
         public Timer CloseTimer;
         bool onFocus = false;
         Timer closePanelTimer;
+        bool standaloneMode;
 
         public ToolBar(Main m)
         {
@@ -40,6 +41,20 @@ namespace VPet_Simulator.Core
             m.TimeUIHandle += M_TimeUIHandle;
             //LoadWork();
             LoadDIY();
+        }
+
+        public void SetStandaloneMode(bool enabled)
+        {
+            standaloneMode = enabled;
+            if (!enabled)
+                return;
+
+            MenuFeed.Visibility = Visibility.Collapsed;
+            MenuPanel.Visibility = Visibility.Collapsed;
+            MenuInteract.Visibility = Visibility.Collapsed;
+            MenuDIY.Visibility = Visibility.Collapsed;
+            BdrPanel.Visibility = Visibility.Collapsed;
+            ToolBarMenu.Tag = 1;
         }
         public void LoadClean()
         {
@@ -141,6 +156,13 @@ namespace VPet_Simulator.Core
         /// </summary>
         public void LoadDIY()
         {
+            if (standaloneMode)
+            {
+                MenuDIY.Visibility = Visibility.Collapsed;
+                ToolBarMenu.Tag = 1;
+                return;
+            }
+
             if (MenuDIY.Items.Count > 0)
             {
                 if (MenuDIY.Visibility == Visibility.Visible)

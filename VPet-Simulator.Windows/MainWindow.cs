@@ -323,6 +323,12 @@ namespace VPet_Simulator.Windows
         {
             Main.ToolBar.MenuDIY.Items.Clear();
 
+            if (RuntimeFeatures.StandaloneMode)
+            {
+                Main.ToolBar.LoadDIY();
+                return;
+            }
+
             if (App.MutiSaves.Count > 1)
             {
                 var list = App.MutiSaves.ToList();
@@ -1767,6 +1773,7 @@ namespace VPet_Simulator.Windows
             //#endif
             );
             Main.NoFunctionMOD = Set.CalFunState;
+            Main.ToolBar.SetStandaloneMode(RuntimeFeatures.StandaloneMode);
             await Dispatcher.InvokeAsync(() =>
               {
                   //清空资源
@@ -2089,26 +2096,40 @@ namespace VPet_Simulator.Windows
                       });
                   });
 
-                  Main.ToolBar.AddMenuButton(ToolBar.MenuType.Setting, "退出桌宠".Translate(), () => { Main.ToolBar.Visibility = Visibility.Collapsed; Close(); });
-                  if (Set.DeBug)
-                      Main.ToolBar.AddMenuButton(ToolBar.MenuType.Setting, "开发控制台".Translate(), () => { Main.ToolBar.Visibility = Visibility.Collapsed; new winConsole(this).Show(); });
-                  Main.ToolBar.AddMenuButton(ToolBar.MenuType.Setting, "照片图库".Translate(), ShowGallery);
-                  Main.ToolBar.AddMenuButton(ToolBar.MenuType.Setting, "操作教程".Translate(), () =>
+                  if (RuntimeFeatures.StandaloneMode)
                   {
-                      if (LocalizeCore.CurrentCulture == "zh-Hans")
-                          ExtensionFunction.StartURL("https://wiki.exlb.net/vpet/tutorial");
-                      else if (LocalizeCore.CurrentCulture == "zh-Hant")
-                          ExtensionFunction.StartURL("https://wiki.exlb.net/zh-hant/vpet/tutorial");
-                      else
-                          ExtensionFunction.StartURL("https://wiki.exlb.net/en/vpet/tutorial");
-                  });
-                  Main.ToolBar.AddMenuButton(ToolBar.MenuType.Setting, "反馈中心".Translate(), () => { Main.ToolBar.Visibility = Visibility.Collapsed; new winReport(this).Show(); });
-                  Main.ToolBar.AddMenuButton(ToolBar.MenuType.Setting, "设置面板".Translate(), () =>
+                      Main.ToolBar.MenuSetting.Items.Clear();
+                      Main.ToolBar.AddMenuButton(ToolBar.MenuType.Setting, "设置面板".Translate(), () =>
+                      {
+                          Main.ToolBar.Visibility = Visibility.Collapsed;
+                          winSetting.Show();
+                          winSetting.Activate();
+                      });
+                      Main.ToolBar.AddMenuButton(ToolBar.MenuType.Setting, "退出桌宠".Translate(), () => { Main.ToolBar.Visibility = Visibility.Collapsed; Close(); });
+                  }
+                  else
                   {
-                      Main.ToolBar.Visibility = Visibility.Collapsed;
-                      winSetting.Show();
-                      winSetting.Activate();
-                  });
+                      Main.ToolBar.AddMenuButton(ToolBar.MenuType.Setting, "退出桌宠".Translate(), () => { Main.ToolBar.Visibility = Visibility.Collapsed; Close(); });
+                      if (Set.DeBug)
+                          Main.ToolBar.AddMenuButton(ToolBar.MenuType.Setting, "开发控制台".Translate(), () => { Main.ToolBar.Visibility = Visibility.Collapsed; new winConsole(this).Show(); });
+                      Main.ToolBar.AddMenuButton(ToolBar.MenuType.Setting, "照片图库".Translate(), ShowGallery);
+                      Main.ToolBar.AddMenuButton(ToolBar.MenuType.Setting, "操作教程".Translate(), () =>
+                      {
+                          if (LocalizeCore.CurrentCulture == "zh-Hans")
+                              ExtensionFunction.StartURL("https://wiki.exlb.net/vpet/tutorial");
+                          else if (LocalizeCore.CurrentCulture == "zh-Hant")
+                              ExtensionFunction.StartURL("https://wiki.exlb.net/zh-hant/vpet/tutorial");
+                          else
+                              ExtensionFunction.StartURL("https://wiki.exlb.net/en/vpet/tutorial");
+                      });
+                      Main.ToolBar.AddMenuButton(ToolBar.MenuType.Setting, "反馈中心".Translate(), () => { Main.ToolBar.Visibility = Visibility.Collapsed; new winReport(this).Show(); });
+                      Main.ToolBar.AddMenuButton(ToolBar.MenuType.Setting, "设置面板".Translate(), () =>
+                      {
+                          Main.ToolBar.Visibility = Visibility.Collapsed;
+                          winSetting.Show();
+                          winSetting.Activate();
+                      });
+                  }
 
                   //this.Background = new ImageBrush(new BitmapImage(new Uri("pack://application:,,,/Res/TopLogo2019.PNG")));
 
@@ -2120,36 +2141,39 @@ namespace VPet_Simulator.Windows
                   //        eat.Run(b, new BitmapImage(new Uri("pack://application:,,,/Res/汉堡.png")), Main.DisplayToNomal);
                   //    }
                   //);
-                  Main.ToolBar.AddMenuButton(ToolBar.MenuType.Feed, "吃饭".Translate(), () =>
+                  if (!RuntimeFeatures.StandaloneMode)
                   {
-                      winBetterBuy.Show(Food.FoodType.Meal);
-                  });
-                  Main.ToolBar.AddMenuButton(ToolBar.MenuType.Feed, "喝水".Translate(), () =>
-                  {
-                      winBetterBuy.Show(Food.FoodType.Drink);
-                  });
-                  Main.ToolBar.AddMenuButton(ToolBar.MenuType.Feed, "收藏".Translate(), () =>
-                  {
-                      winBetterBuy.Show(Food.FoodType.Star);
-                  });
-                  Main.ToolBar.AddMenuButton(ToolBar.MenuType.Feed, "药品".Translate(), () =>
-                  {
-                      winBetterBuy.Show(Food.FoodType.Drug);
-                  });
-                  Main.ToolBar.AddMenuButton(ToolBar.MenuType.Feed, "礼品".Translate(), () =>
-                  {
-                      winBetterBuy.Show(Food.FoodType.Gift);
-                  });
-                  Main.ToolBar.AddMenuButton(ToolBar.MenuType.Feed, "背包".Translate(), () =>
-                  {
-                      if (winInventory != null && !winInventory.IsClosed)
-                          winInventory.Show();
-                      else
+                      Main.ToolBar.AddMenuButton(ToolBar.MenuType.Feed, "吃饭".Translate(), () =>
                       {
-                          winInventory = new winInventory(this);
-                          winInventory.Show();
-                      }
-                  });
+                          winBetterBuy.Show(Food.FoodType.Meal);
+                      });
+                      Main.ToolBar.AddMenuButton(ToolBar.MenuType.Feed, "喝水".Translate(), () =>
+                      {
+                          winBetterBuy.Show(Food.FoodType.Drink);
+                      });
+                      Main.ToolBar.AddMenuButton(ToolBar.MenuType.Feed, "收藏".Translate(), () =>
+                      {
+                          winBetterBuy.Show(Food.FoodType.Star);
+                      });
+                      Main.ToolBar.AddMenuButton(ToolBar.MenuType.Feed, "药品".Translate(), () =>
+                      {
+                          winBetterBuy.Show(Food.FoodType.Drug);
+                      });
+                      Main.ToolBar.AddMenuButton(ToolBar.MenuType.Feed, "礼品".Translate(), () =>
+                      {
+                          winBetterBuy.Show(Food.FoodType.Gift);
+                      });
+                      Main.ToolBar.AddMenuButton(ToolBar.MenuType.Feed, "背包".Translate(), () =>
+                      {
+                          if (winInventory != null && !winInventory.IsClosed)
+                              winInventory.Show();
+                          else
+                          {
+                              winInventory = new winInventory(this);
+                              winInventory.Show();
+                          }
+                      });
+                  }
                   Main.SetMoveMode(Set.AllowMove, Set.SmartMove, Set.SmartMoveInterval * 1000);
                   Main.SetLogicInterval((int)(Set.LogicInterval * 1000));
                   if (Set.MessageBarOutside)
@@ -2185,15 +2209,16 @@ namespace VPet_Simulator.Windows
                       Checked = Topmost
                   };
                   m_menu.Items.Add(topmost);
-                  m_menu.Items.Add(new MenuItem("操作教程".Translate(), null, (x, y) =>
-                  {
-                      if (LocalizeCore.CurrentCulture == "zh-Hans")
-                          ExtensionFunction.StartURL(ExtensionValue.BaseDirectory + @"\Tutorial.html");
-                      else if (LocalizeCore.CurrentCulture == "zh-Hant")
-                          ExtensionFunction.StartURL(ExtensionValue.BaseDirectory + @"\Tutorial_zht.html");
-                      else
-                          ExtensionFunction.StartURL(ExtensionValue.BaseDirectory + @"\Tutorial_en.html");
-                  }));
+                  if (!RuntimeFeatures.StandaloneMode)
+                      m_menu.Items.Add(new MenuItem("操作教程".Translate(), null, (x, y) =>
+                      {
+                          if (LocalizeCore.CurrentCulture == "zh-Hans")
+                              ExtensionFunction.StartURL(ExtensionValue.BaseDirectory + @"\Tutorial.html");
+                          else if (LocalizeCore.CurrentCulture == "zh-Hant")
+                              ExtensionFunction.StartURL(ExtensionValue.BaseDirectory + @"\Tutorial_zht.html");
+                          else
+                              ExtensionFunction.StartURL(ExtensionValue.BaseDirectory + @"\Tutorial_en.html");
+                      }));
                   m_menu.Items.Add(new MenuItem("重置位置与状态".Translate(), null, (x, y) =>
                   {
                       Main.CleanState();
@@ -2201,15 +2226,17 @@ namespace VPet_Simulator.Windows
                       Left = (SystemParameters.PrimaryScreenWidth - Width) / 2;
                       Top = (SystemParameters.PrimaryScreenHeight - Height) / 2;
                   }));
-                  m_menu.Items.Add(new MenuItem("反馈中心".Translate(), null, (x, y) => { new winReport(this).Show(); }));
-                  if (Set.DeBug)
+                  if (!RuntimeFeatures.StandaloneMode)
+                      m_menu.Items.Add(new MenuItem("反馈中心".Translate(), null, (x, y) => { new winReport(this).Show(); }));
+                  if (!RuntimeFeatures.StandaloneMode && Set.DeBug)
                       m_menu.Items.Add(new MenuItem("开发控制台".Translate(), null, (x, y) => { new winConsole(this).Show(); }));
 
                   m_menu.Items.Add(new MenuItem("设置面板".Translate(), null, (x, y) =>
                   {
                       winSetting.Show();
                   }));
-                  m_menu.Items.Add(new MenuItem("重启桌宠".Translate(), null, (x, y) => Restart()));
+                  if (!RuntimeFeatures.StandaloneMode)
+                      m_menu.Items.Add(new MenuItem("重启桌宠".Translate(), null, (x, y) => Restart()));
                   m_menu.Items.Add(new MenuItem("退出桌宠".Translate(), null, (x, y) => Close()));
 
                   LoadDIY();
@@ -2267,7 +2294,7 @@ namespace VPet_Simulator.Windows
                           SetTransparentHitThrough();
                   }
 
-                  if (File.Exists(ExtensionValue.BaseDirectory + @"\Tutorial.html") && Set["SingleTips"].GetDateTime("tutorial") <= new DateTime(2023, 10, 20) && App.MainWindows.Count == 1)
+                  if (!RuntimeFeatures.StandaloneMode && File.Exists(ExtensionValue.BaseDirectory + @"\Tutorial.html") && Set["SingleTips"].GetDateTime("tutorial") <= new DateTime(2023, 10, 20) && App.MainWindows.Count == 1)
                   {
                       Set["SingleTips"].SetDateTime("tutorial", DateTime.Now);
                       if (LocalizeCore.CurrentCulture == "zh-Hans")
@@ -2277,7 +2304,7 @@ namespace VPet_Simulator.Windows
                       else
                           ExtensionFunction.StartURL(ExtensionValue.BaseDirectory + @"\Tutorial_en.html");
                   }
-                  if (!Set["SingleTips"].GetBool("helloworld"))
+                  if (!RuntimeFeatures.StandaloneMode && !Set["SingleTips"].GetBool("helloworld"))
                   {
                       Task.Run(() =>
                       {
@@ -2289,7 +2316,7 @@ namespace VPet_Simulator.Windows
                           //Main.SayRnd("欢迎使用虚拟桌宠模拟器\n这是个中期的测试版,若有bug请多多包涵\n欢迎加群虚拟主播模拟器430081239或在菜单栏-管理-反馈中提交bug或建议".Translate());
                       });
                   }
-                  if (Set["v"][(gint)"rank"] != DateTime.Now.Year && GameSavesData.Statistics[(gint)"stat_total_time"] > 3600)
+                  if (!RuntimeFeatures.StandaloneMode && Set["v"][(gint)"rank"] != DateTime.Now.Year && GameSavesData.Statistics[(gint)"stat_total_time"] > 3600)
                   {//年度报告提醒
                       Task.Run(() =>
                       {
@@ -2318,7 +2345,7 @@ namespace VPet_Simulator.Windows
                       });
                   }
                   //生日设置提醒
-                  if (GameSavesData.Data.FindLine("HostBDay") == null)
+                  if (!RuntimeFeatures.StandaloneMode && GameSavesData.Data.FindLine("HostBDay") == null)
                   {
                       Task.Run(() =>
                       {
@@ -2342,7 +2369,7 @@ namespace VPet_Simulator.Windows
                           Main.Say("不要忘记设置生日时间哦 {0}，我会偷偷给你准备礼物的。".Translate(GameSavesData.GameSave.HostName), btn, "shining");
                       });
                   }
-                  else
+                  else if (!RuntimeFeatures.StandaloneMode)
                   {
                       var bdt = GameSavesData.GetDateTime("HostBDay");
                       if (DateTime.Now.Month == bdt.Month && DateTime.Now.Day == bdt.Day)
@@ -2356,7 +2383,7 @@ namespace VPet_Simulator.Windows
                   }
 
 #if BDAY
-                  if (DateTime.Now < new DateTime(2025, 8, 22) && DateTime.Now >= new DateTime(2025, 8, 14))
+                  if (!RuntimeFeatures.StandaloneMode && DateTime.Now < new DateTime(2025, 8, 22) && DateTime.Now >= new DateTime(2025, 8, 14))
                   {
                       food.Star = true;
                       Task.Run(() =>

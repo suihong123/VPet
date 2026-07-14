@@ -1,0 +1,84 @@
+name: Standalone Cat Build
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - feature/standalone-cat-mvp
+
+jobs:
+  verify-cat-resources:
+    name: Verify placeholder cat resources
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 8.0.x
+
+      - name: Show .NET info
+        shell: pwsh
+        run: dotnet --info
+
+      - name: Restore Windows x64
+        shell: pwsh
+        run: dotnet restore VPet-Simulator.Windows/VPet-Simulator.Windows.csproj -p:Platform=x64 -p:EnableWindowsTargeting=true
+
+      - name: Build Windows x64
+        shell: pwsh
+        run: dotnet build VPet-Simulator.Windows/VPet-Simulator.Windows.csproj -c Release --no-restore -p:Platform=x64 -p:EnableWindowsTargeting=true
+
+      - name: Verify cat resources
+        shell: pwsh
+        run: |
+          $outputRoots = @(
+            "VPet-Simulator.Windows/bin/x64/Release/net8.0-windows",
+            "VPet-Simulator.Windows/bin/Release/net8.0-windows"
+          )
+          $outputRoot = $outputRoots | Where-Object { Test-Path $_ } | Select-Object -First 1
+          if (-not $outputRoot) {
+            Write-Error "Could not find Windows build output directory."
+            exit 1
+          }
+
+          $catRoot = Join-Path $outputRoot "mod/0000_core/pet/cat"
+          $catConfig = Join-Path $outputRoot "mod/0000_core/pet/cat.lps"
+          if (-not (Test-Path $catConfig)) {
+            Write-Error "Missing cat.lps at $catConfig"
+            exit 1
+          }
+          if (-not (Test-Path $catRoot)) {
+            Write-Error "Missing cat resource directory at $catRoot"
+            exit 1
+          }
+
+          $pngFiles = Get-ChildItem $catRoot -Recurse -File -Filter *.png | Sort-Object FullName
+          if ($pngFiles.Count -ne 12) {
+            Write-Error "Expected 12 cat PNG files, found $($pngFiles.Count)."
+            exit 1
+          }
+
+          $manifest = "cat-resource-manifest.txt"
+          "output_root=$outputRoot" | Set-Content $manifest
+          "cat_config=mod/0000_core/pet/cat.lps" | Add-Content $manifest
+          "png_count=$($pngFiles.Count)" | Add-Content $manifest
+          Get-Item $catConfig | ForEach-Object {
+            "mod/0000_core/pet/cat.lps`t$($_.Length)" | Add-Content $manifest
+          }
+          $pngFiles | ForEach-Object {
+            $relative = $_.FullName.Substring((Resolve-Path $outputRoot).Path.Length + 1).Replace('\', '/')
+            "$relative`t$($_.Length)" | Add-Content $manifest
+          }
+
+          Get-Content $manifest
+
+      - name: Upload cat resource manifest
+        uses: actions/upload-artifact@v4
+        with:
+          name: cat-resource-manifest
+          path: cat-resource-manifest.txt
+          retention-days: 7

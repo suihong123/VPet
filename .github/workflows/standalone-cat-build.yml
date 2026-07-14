@@ -24,6 +24,25 @@ jobs:
         shell: pwsh
         run: dotnet --info
 
+      - name: Verify default cat configuration
+        shell: pwsh
+        run: |
+          $runtimeFeatures = Get-Content "VPet-Simulator.Windows/RuntimeFeatures.cs" -Raw
+          if ($runtimeFeatures -notmatch 'DefaultPetId\s*=>\s*"cat"') {
+            Write-Error "RuntimeFeatures.DefaultPetId is not cat."
+            exit 1
+          }
+
+          $catSourceConfig = Get-Content "VPet-Simulator.Windows/mod/0000_core/pet/cat.lps" -Raw
+          if ($catSourceConfig -notmatch 'pet#cat:') {
+            Write-Error "Source cat.lps does not declare pet#cat."
+            exit 1
+          }
+          if ($catSourceConfig -notmatch 'path#cat:') {
+            Write-Error "Source cat.lps does not declare path#cat."
+            exit 1
+          }
+
       - name: Restore Windows x64
         shell: pwsh
         run: dotnet restore VPet-Simulator.Windows/VPet-Simulator.Windows.csproj -p:Platform=x64 -p:EnableWindowsTargeting=true
@@ -85,6 +104,15 @@ jobs:
           }
           if (-not (Test-Path $catRoot)) {
             Write-Error "Missing cat resource directory at $catRoot"
+            exit 1
+          }
+          $catConfigText = Get-Content $catConfig -Raw
+          if ($catConfigText -notmatch 'pet#cat:') {
+            Write-Error "Output cat.lps does not declare pet#cat."
+            exit 1
+          }
+          if ($catConfigText -notmatch 'path#cat:') {
+            Write-Error "Output cat.lps does not declare path#cat."
             exit 1
           }
 

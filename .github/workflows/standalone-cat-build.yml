@@ -29,10 +29,42 @@ jobs:
         run: dotnet restore VPet-Simulator.Windows/VPet-Simulator.Windows.csproj -p:Platform=x64 -p:EnableWindowsTargeting=true
 
       - name: Build Windows x64
+        id: build-windows
         shell: pwsh
-        run: dotnet build VPet-Simulator.Windows/VPet-Simulator.Windows.csproj -c Release --no-restore -p:Platform=x64 -p:EnableWindowsTargeting=true
+        run: |
+          $logPath = "windows-build.log"
+          $binlogPath = "windows-build.binlog"
+
+          dotnet build VPet-Simulator.Windows/VPet-Simulator.Windows.csproj `
+            -c Release `
+            --no-restore `
+            -p:Platform=x64 `
+            -p:EnableWindowsTargeting=true `
+            -v:diag `
+            "-bl:$binlogPath" 2>&1 | Tee-Object -FilePath $logPath
+
+          $buildExitCode = $LASTEXITCODE
+          "exit_code=$buildExitCode" | Out-File -FilePath $env:GITHUB_OUTPUT -Append
+
+          Write-Host "dotnet build exit code: $buildExitCode"
+          Write-Host "Last 300 lines:"
+          Get-Content $logPath -Tail 300
+
+          exit 0
+
+      - name: Upload Windows build diagnostics
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: standalone-cat-build-diagnostics
+          path: |
+            windows-build.log
+            windows-build.binlog
+          if-no-files-found: warn
+          retention-days: 7
 
       - name: Verify cat resources
+        if: steps.build-windows.outputs.exit_code == '0'
         shell: pwsh
         run: |
           $outputRoots = @(
@@ -77,8 +109,20 @@ jobs:
           Get-Content $manifest
 
       - name: Upload cat resource manifest
+        if: steps.build-windows.outputs.exit_code == '0'
         uses: actions/upload-artifact@v4
         with:
           name: cat-resource-manifest
           path: cat-resource-manifest.txt
           retention-days: 7
+
+      - name: Fail if Windows build failed
+        if: always()
+        shell: pwsh
+        run: |
+          $exitCode = '${{ steps.build-windows.outputs.exit_code }}'
+          Write-Host "Captured Windows build exit code: $exitCode"
+
+          if ($exitCode -ne '0') {
+            exit 1
+          }

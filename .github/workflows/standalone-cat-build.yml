@@ -2,6 +2,12 @@ name: Standalone Cat Build
 
 on:
   workflow_dispatch:
+    inputs:
+      upload_test_package:
+        description: Upload internal Windows test package
+        required: false
+        default: false
+        type: boolean
   push:
     branches:
       - feature/standalone-cat-mvp
@@ -143,6 +149,69 @@ jobs:
           name: cat-resource-manifest
           path: cat-resource-manifest.txt
           retention-days: 7
+
+      - name: Prepare internal Windows test package
+        if: github.event_name == 'workflow_dispatch' && inputs.upload_test_package == true && steps.build-windows.outputs.exit_code == '0'
+        shell: pwsh
+        run: |
+          $outputRoots = @(
+            "VPet-Simulator.Windows/bin/x64/Release/net8.0-windows",
+            "VPet-Simulator.Windows/bin/Release/net8.0-windows"
+          )
+          $outputRoot = $outputRoots | Where-Object { Test-Path $_ } | Select-Object -First 1
+          if (-not $outputRoot) {
+            Write-Error "Could not find Windows build output directory."
+            exit 1
+          }
+
+          $packageRoot = "standalone-cat-windows-x64-test"
+          if (Test-Path $packageRoot) {
+            Remove-Item $packageRoot -Recurse -Force
+          }
+          New-Item -ItemType Directory -Path $packageRoot | Out-Null
+
+          Copy-Item -Path (Join-Path $outputRoot "*") -Destination $packageRoot -Recurse -Force
+          Get-ChildItem $packageRoot -Recurse -Force -Include *.pdb,*.binlog | Remove-Item -Force
+
+          @"
+          Internal Windows Runtime Test Package
+          =====================================
+
+          This package is only for internal technical validation.
+          It is not a formal release build.
+          Do not sell, publish, promote, or redistribute this package.
+
+          This package may still contain upstream project structure, original sample assets,
+          and other resources that are not cleared for commercial distribution.
+
+          Steam is disabled by runtime feature flags. Closing Steam before first launch is not required.
+
+          Recommended test environment:
+          - Windows 10/11 x64
+          - .NET 8 Desktop Runtime installed
+
+          If the app does not start and Windows reports a missing runtime, install the Microsoft
+          .NET 8 Desktop Runtime for x64, then try again.
+
+          Report startup errors with:
+          - Windows version
+          - whether .NET 8 Desktop Runtime is installed
+          - whether Steam is installed/running
+          - screenshots of any error dialogs
+          - local logs from the application directory or user profile, if generated
+          - Windows Event Viewer application error details, if present
+          "@ | Set-Content -Path (Join-Path $packageRoot "INTERNAL-TEST-README.txt")
+
+          Write-Host "Prepared package files:"
+          Get-ChildItem $packageRoot -Recurse -File | Select-Object FullName, Length
+
+      - name: Upload internal Windows test package
+        if: github.event_name == 'workflow_dispatch' && inputs.upload_test_package == true && steps.build-windows.outputs.exit_code == '0'
+        uses: actions/upload-artifact@v4
+        with:
+          name: standalone-cat-windows-x64-test
+          path: standalone-cat-windows-x64-test
+          retention-days: 3
 
       - name: Fail if Windows build failed
         if: always()

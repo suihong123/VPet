@@ -21,5 +21,5 @@ public static class RuntimeFeatures
 
     public static bool EnableLocalMods => true;
 
-    public static string DefaultPetId => "vup";
+    public static string DefaultPetId => "cat";
 }

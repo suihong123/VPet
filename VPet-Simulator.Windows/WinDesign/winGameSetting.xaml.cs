@@ -237,7 +237,8 @@ namespace VPet_Simulator.Windows
                 //    break;
                 case "DIY":
                     RBCGPTDIY.IsChecked = true;
-                    BtnCGPTReSet.Content = "打开 {0} 设置".Translate(mw.TalkBoxCurr?.APIName ?? "Steam Workshop");
+                    BtnCGPTReSet.Content = "打开 {0} 设置".Translate(mw.TalkBoxCurr?.APIName
+                        ?? (RuntimeFeatures.StandaloneMode ? "本地 MOD" : "Steam Workshop"));
                     break;
                 case "LB":
                     RBCGPTUseLB.IsChecked = true;
@@ -1220,7 +1221,8 @@ namespace VPet_Simulator.Windows
                 case "DIY":
                     BtnCGPTReSet.IsEnabled = true;
                     mw.RemoveTalkBox();
-                    BtnCGPTReSet.Content = "打开 {0} 设置".Translate(mw.TalkBoxCurr?.APIName ?? "Steam Workshop");
+                    BtnCGPTReSet.Content = "打开 {0} 设置".Translate(mw.TalkBoxCurr?.APIName
+                        ?? (RuntimeFeatures.StandaloneMode ? "本地 MOD" : "Steam Workshop"));
                     mw.LoadTalkDIY();
                     break;
                 case "LB":
@@ -1558,7 +1560,8 @@ namespace VPet_Simulator.Windows
             mw.Set["CGPT"][(gstr)"DIY"] = mw.TalkBoxCurr?.APIName ?? "";
             if (RBCGPTDIY.IsChecked == true)
                 mw.LoadTalkDIY();
-            BtnCGPTReSet.Content = "打开 {0} 设置".Translate(mw.TalkBoxCurr?.APIName ?? "Steam Workshop");
+            BtnCGPTReSet.Content = "打开 {0} 设置".Translate(mw.TalkBoxCurr?.APIName
+                ?? (RuntimeFeatures.StandaloneMode ? "本地 MOD" : "Steam Workshop"));
 
         }
 

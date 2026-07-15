@@ -51,7 +51,7 @@
                     </Border>
                 </DataTemplate>
             </TabControl.ContentTemplate>
-            <TabItem BorderBrush="{DynamicResource PrimaryDarker}" Foreground="{DynamicResource PrimaryText}"
+            <TabItem x:Name="TabGraphics" BorderBrush="{DynamicResource PrimaryDarker}" Foreground="{DynamicResource PrimaryText}"
                     Header="{ll:Str 图形}">
                 <Grid Margin="0,0,-5,0">
                     <ScrollViewer>
@@ -63,25 +63,25 @@
                             </Grid.ColumnDefinitions>
                             <Grid.RowDefinitions>
                                 <RowDefinition Height="35" />
+                                <RowDefinition x:Name="GraphicsPetHelperRow" Height="35" />
                                 <RowDefinition Height="35" />
+                                <RowDefinition x:Name="GraphicsHigherScaleRow" Height="35" />
                                 <RowDefinition Height="35" />
+                                <RowDefinition x:Name="GraphicsResolutionRow" Height="35" />
+                                <RowDefinition x:Name="GraphicsThemeRow" Height="35" />
+                                <RowDefinition x:Name="GraphicsFontRow" Height="35" />
                                 <RowDefinition Height="35" />
+                                <RowDefinition x:Name="GraphicsMessageBarRow" Height="35" />
                                 <RowDefinition Height="35" />
-                                <RowDefinition Height="35" />
-                                <RowDefinition Height="35" />
-                                <RowDefinition Height="35" />
-                                <RowDefinition Height="35" />
-                                <RowDefinition Height="35" />
-                                <RowDefinition Height="35" />
-                                <RowDefinition Height="35" />
-                                <RowDefinition Height="35" />
+                                <RowDefinition x:Name="GraphicsPetSelectionRow" Height="35" />
+                                <RowDefinition x:Name="GraphicsPetDescriptionRow" Height="35" />
                                 <RowDefinition Height="35" />
                                 <RowDefinition Height="35" />
                                 <RowDefinition Height="35" />
                                 <RowDefinition Height="35" />
                                 <RowDefinition Height="Auto" />
                             </Grid.RowDefinitions>
-                            <TextBlock Grid.Row="1" VerticalAlignment="Center" Text="{ll:Str 快速切换}" />
+                            <TextBlock x:Name="PetHelperLabel" Grid.Row="1" VerticalAlignment="Center" Text="{ll:Str 快速切换}" />
                             <TextBlock VerticalAlignment="Center" Text="{ll:Str 置于顶层}" />
                             <Grid Grid.Row="0" Grid.Column="2">
                                 <Grid.ColumnDefinitions>
@@ -120,7 +120,7 @@
                                     ToggleShadowColor="{x:Null}" ToggleSize="14" ToolTip="{ll:Str '添加快速切换小标,切换顶层或穿透'}"
                                     Unchecked="PetHelperBox_Checked" />
 
-                            <TextBlock Grid.Row="3" VerticalAlignment="Center" Text="{ll:Str 更高缩放}" />
+                            <TextBlock x:Name="HigherScaleLabel" Grid.Row="3" VerticalAlignment="Center" Text="{ll:Str 更高缩放}" />
                             <pu:Switch x:Name="FullScreenBox" Grid.Row="3" Grid.Column="2" Background="Transparent"
                                     BorderBrush="{DynamicResource PrimaryDark}" BoxHeight="18" BoxWidth="35"
                                     Checked="FullScreenBox_Check" CheckedBackground="{DynamicResource Primary}"
@@ -136,7 +136,7 @@
                                 </Grid.ColumnDefinitions>
                                 <Grid.RowDefinitions>
                                     <RowDefinition />
-                                    <RowDefinition />
+                                    <RowDefinition x:Name="ResolutionControlRow" />
                                 </Grid.RowDefinitions>
                                 <Slider x:Name="ZoomSlider" VerticalAlignment="Center" IsSnapToTickEnabled="True"
                                         LargeChange=".1" Maximum="3" Minimum="0.5" PreviewMouseUp="ZoomSlider_MouseUp"
@@ -158,13 +158,13 @@
                                         Text="{Binding ElementName=SliderResolution, Path=Value, StringFormat=f0}"
                                         ToolTip="{ll:Str '桌宠图形渲染的分辨率,越高图形越清晰\&#13;但是高分辨率会占用更多内存\&#13;重启后生效'}" />
                             </Grid>
-                            <TextBlock Grid.Row="5" Grid.ColumnSpan="2" VerticalAlignment="Center" Text="{ll:Str 渲染分辨率}" />
-                            <TextBlock Grid.Row="6" VerticalAlignment="Center" Text="{ll:Str 主题}" />
+                            <TextBlock x:Name="ResolutionLabel" Grid.Row="5" Grid.ColumnSpan="2" VerticalAlignment="Center" Text="{ll:Str 渲染分辨率}" />
+                            <TextBlock x:Name="ThemeLabel" Grid.Row="6" VerticalAlignment="Center" Text="{ll:Str 主题}" />
                             <ComboBox x:Name="ThemeBox" Grid.Row="6" Grid.Column="2" Margin="0,3,0,2" FontSize="16"
                                     SelectionChanged="ThemeBox_SelectionChanged"
                                     Style="{DynamicResource StandardComboBoxStyle}" />
 
-                            <TextBlock Grid.Row="7" VerticalAlignment="Center" Text="{ll:Str 字体}" />
+                            <TextBlock x:Name="FontLabel" Grid.Row="7" VerticalAlignment="Center" Text="{ll:Str 字体}" />
                             <ComboBox x:Name="FontBox" Grid.Row="7" Grid.Column="2" Margin="0,2,0,3" FontSize="16"
                                     SelectionChanged="FontBox_SelectionChanged"
                                     Style="{DynamicResource StandardComboBoxStyle}" />
@@ -201,7 +201,7 @@
                                         Click="BtnStartUpGet_Click" Content="{ll:Str 当前位置}" />
 
                             </Grid>
-                            <TextBlock Grid.Row="9" VerticalAlignment="Center" Text="{ll:Str 消息框}" />
+                            <TextBlock x:Name="MessageBarLabel" Grid.Row="9" VerticalAlignment="Center" Text="{ll:Str 消息框}" />
                             <pu:Switch x:Name="SwitchMsgOut" Grid.Row="9" Grid.Column="2" Background="Transparent"
                                     BorderBrush="{DynamicResource PrimaryDark}" BoxHeight="18" BoxWidth="35"
                                     Checked="SwitchMsgOut_Checked" CheckedBackground="{DynamicResource Primary}"
@@ -234,7 +234,7 @@
                                         ToggleSize="14" ToolTip="{ll:Str '从Steam启动该游戏, 统计时长不能停'}"
                                         Unchecked="StartUpSteamBox_Checked" />
                             </Grid>
-                            <TextBlock Grid.Row="11" VerticalAlignment="Center" Text="{ll:Str 宠物动画}" />
+                            <TextBlock x:Name="PetSelectionLabel" Grid.Row="11" VerticalAlignment="Center" Text="{ll:Str 宠物动画}" />
                             <TextBlock x:Name="PetIntor" Grid.Row="12" Grid.Column="2" VerticalAlignment="Center"
                                     FontSize="14" Text="{ll:Str 动画描述动画描述动画描述动画描述动画描述}" TextWrapping="WrapWithOverflow" />
                             <ComboBox x:Name="PetBox" Grid.Row="11" Grid.Column="2" Margin="0,3,0,2" FontSize="16"
@@ -297,7 +297,7 @@
                             Visibility="Collapsed" />
                 </Grid>
             </TabItem>
-            <TabItem BorderBrush="{DynamicResource PrimaryDarker}" Header="{ll:Str 系统}">
+            <TabItem x:Name="TabSystem" BorderBrush="{DynamicResource PrimaryDarker}" Header="{ll:Str 系统}">
                 <ScrollViewer>
                     <StackPanel>
                         <TextBlock HorizontalAlignment="Left" VerticalAlignment="Top" Background="{x:Null}"
@@ -512,7 +512,7 @@
                     </StackPanel>
                 </ScrollViewer>
             </TabItem>
-            <TabItem BorderBrush="{DynamicResource PrimaryDarker}" Header="{ll:Str 互动}">
+            <TabItem x:Name="TabInteraction" BorderBrush="{DynamicResource PrimaryDarker}" Header="{ll:Str 互动}">
                 <ScrollViewer>
                     <StackPanel>
                         <TextBlock HorizontalAlignment="Left" VerticalAlignment="Top" Background="{x:Null}"
@@ -785,14 +785,14 @@
                                     Padding="7,0,15,0" CornerRadius="5"
                                     SelectedDateTimeChanged="TextBoxHostBDay_SelectedDateTimeChanged" />
                         </Grid>
-                        <TextBlock Margin="0,5,0,0" HorizontalAlignment="Left" VerticalAlignment="Top"
+                        <TextBlock x:Name="MusicRecognitionHeader" Margin="0,5,0,0" HorizontalAlignment="Left" VerticalAlignment="Top"
                                 Background="{x:Null}" TextWrapping="Wrap">
                             <Run FontSize="18" FontWeight="Bold" Text="{ll:Str 音乐识别设置}" /><LineBreak />
                             <Run Text="{ll:Str 设置识别音乐播放特殊动作阈值}" /> <LineBreak />
                             <Run Text="{ll:Str 当前播放音量大小}" />
                             :<Run x:Name="RVoice" />
                         </TextBlock>
-                        <Grid>
+                        <Grid x:Name="MusicRecognitionSettings">
                             <Grid.ColumnDefinitions>
                                 <ColumnDefinition Width="Auto" />
                                 <ColumnDefinition Width="15" />
@@ -832,7 +832,7 @@
                     </StackPanel>
                 </ScrollViewer>
             </TabItem>
-            <TabItem BorderBrush="{DynamicResource PrimaryDarker}" Header="{ll:Str 自定}">
+            <TabItem x:Name="TabCustom" BorderBrush="{DynamicResource PrimaryDarker}" Header="{ll:Str 自定}">
                 <StackPanel>
                     <TextBlock Background="{x:Null}" TextWrapping="Wrap">
                         <Run FontSize="18" FontWeight="Bold" Text="{ll:Str 自定义链接}" /><LineBreak />
@@ -860,7 +860,7 @@
                 </StackPanel>
 
             </TabItem>
-            <TabItem BorderBrush="{DynamicResource PrimaryDarker}" Header="{ll:Str 诊断}">
+            <TabItem x:Name="TabDiagnosis" BorderBrush="{DynamicResource PrimaryDarker}" Header="{ll:Str 诊断}">
                 <ScrollViewer>
                     <StackPanel>
                         <TextBlock HorizontalAlignment="Left" VerticalAlignment="Top" Background="{x:Null}"
@@ -915,7 +915,7 @@
                     </StackPanel>
                 </ScrollViewer>
             </TabItem>
-            <TabItem BorderBrush="{DynamicResource PrimaryDarker}" Header="{ll:Str MOD管理}">
+            <TabItem x:Name="TabModManagement" BorderBrush="{DynamicResource PrimaryDarker}" Header="{ll:Str MOD管理}">
                 <Grid>
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="120" />
@@ -1025,7 +1025,7 @@
                     </StackPanel>
                 </Grid>
             </TabItem>
-            <TabItem BorderBrush="{DynamicResource PrimaryDarker}" Foreground="{DynamicResource PrimaryText}"
+            <TabItem x:Name="TabAbout" BorderBrush="{DynamicResource PrimaryDarker}" Foreground="{DynamicResource PrimaryText}"
                     Header="{ll:Str '关于'}">
                 <Grid>
                 <Grid x:Name="LegacyAboutPanel">

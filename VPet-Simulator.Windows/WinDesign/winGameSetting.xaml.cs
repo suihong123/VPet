@@ -89,6 +89,7 @@ namespace VPet_Simulator.Windows
                 LegacyAboutPanel.Visibility = Visibility.Collapsed;
                 StandaloneAboutPanel.Visibility = Visibility.Visible;
             }
+            ApplyStandaloneSettingsVisibility();
             TextBoxPetName.Text = mw.Core.Save.Name;
             foreach (PetLoader pl in mw.Pets)
             {
@@ -265,31 +266,34 @@ namespace VPet_Simulator.Windows
             };
             voicetimer.Tick += Voicetimer_Tick;
 
-            //为侧边添加目录           
+            //为侧边添加目录
             ListMenuItems.Add(listmenuswith("置于顶层", 0, TopMostBox));
             ListMenuItems.Add(listmenuswith("开机启动", 0, StartUpBox));
-            ListMenuItems.Add(listmenuswith("宠物动画", 0, PetBox));
             ListMenuItems.Add(listmenuswith("隐藏窗口", 0, SwitchHideFromTaskControl));
 
-            ListMenuItems.Add(listmenuswith("自动保存频率", 1, CBAutoSave));
-            ListMenuItems.Add(listmenuswith("从备份中还原", 1, numBackupSaveMaxNum));
-            ListMenuItems.Add(listmenuswith("聊天设置", 1, RBCGPTUseLB));
-            ListMenuItems.Add(listmenuswith("游戏操作", 1, btn_cleancache));
-            ListMenuItems.Add(listmenuswith("桌宠多开", 1, btn_mutidel));
+            if (!RuntimeFeatures.StandaloneMode)
+            {
+                ListMenuItems.Insert(2, listmenuswith("宠物动画", 0, PetBox));
+                ListMenuItems.Add(listmenuswith("自动保存频率", 1, CBAutoSave));
+                ListMenuItems.Add(listmenuswith("从备份中还原", 1, numBackupSaveMaxNum));
+                ListMenuItems.Add(listmenuswith("聊天设置", 1, RBCGPTUseLB));
+                ListMenuItems.Add(listmenuswith("游戏操作", 1, btn_cleancache));
+                ListMenuItems.Add(listmenuswith("桌宠多开", 1, btn_mutidel));
+            }
 
             ListMenuItems.Add(listmenuswith("互动设置", 2, CalFunctionBox));
             ListMenuItems.Add(listmenuswith("计算间隔", 2, CalSlider));
             ListMenuItems.Add(listmenuswith("桌宠移动", 2, MoveEventBox));
             ListMenuItems.Add(listmenuswith("操作设置", 2, PressLengthSlider));
             ListMenuItems.Add(listmenuswith("桌宠名字", 2, TextBoxPetName));
-            ListMenuItems.Add(listmenuswith("音乐识别设置", 2, VoiceMaxSilder));
-
-            ListMenuItems.Add(listmenuswith("自定义链接", 3, btn_DIY));
-
-            ListMenuItems.Add(listmenuswith("自动超模MOD优化", 4, swAutoCal));
-            ListMenuItems.Add(listmenuswith("诊断与反馈", 4, RBDiagnosisYES));
-
-            ListMenuItems.Add(listmenuswith("MOD管理", 5, ButtonOpenModFolder));
+            if (!RuntimeFeatures.StandaloneMode)
+            {
+                ListMenuItems.Add(listmenuswith("音乐识别设置", 2, VoiceMaxSilder));
+                ListMenuItems.Add(listmenuswith("自定义链接", 3, btn_DIY));
+                ListMenuItems.Add(listmenuswith("自动超模MOD优化", 4, swAutoCal));
+                ListMenuItems.Add(listmenuswith("诊断与反馈", 4, RBDiagnosisYES));
+                ListMenuItems.Add(listmenuswith("MOD管理", 5, ButtonOpenModFolder));
+            }
 
             ListMenuItems.Add(listmenuswith("关于", 6, ImageWHY));
 
@@ -304,6 +308,56 @@ namespace VPet_Simulator.Windows
 
         }
         public List<ListBoxItem> ListMenuItems = new List<ListBoxItem>();
+
+        private void ApplyStandaloneSettingsVisibility()
+        {
+            if (!RuntimeFeatures.StandaloneMode)
+                return;
+
+            TabSystem.Visibility = Visibility.Collapsed;
+            TabCustom.Visibility = Visibility.Collapsed;
+            TabDiagnosis.Visibility = Visibility.Collapsed;
+            TabModManagement.Visibility = Visibility.Collapsed;
+
+            PetHelperLabel.Visibility = Visibility.Collapsed;
+            PetHelperBox.Visibility = Visibility.Collapsed;
+            HigherScaleLabel.Visibility = Visibility.Collapsed;
+            FullScreenBox.Visibility = Visibility.Collapsed;
+            ResolutionLabel.Visibility = Visibility.Collapsed;
+            SliderResolution.Visibility = Visibility.Collapsed;
+            ThemeLabel.Visibility = Visibility.Collapsed;
+            ThemeBox.Visibility = Visibility.Collapsed;
+            FontLabel.Visibility = Visibility.Collapsed;
+            FontBox.Visibility = Visibility.Collapsed;
+            MessageBarLabel.Visibility = Visibility.Collapsed;
+            SwitchMsgOut.Visibility = Visibility.Collapsed;
+            PetSelectionLabel.Visibility = Visibility.Collapsed;
+            PetBox.Visibility = Visibility.Collapsed;
+            PetIntor.Visibility = Visibility.Collapsed;
+
+            GraphicsPetHelperRow.Height = new GridLength(0);
+            GraphicsHigherScaleRow.Height = new GridLength(0);
+            GraphicsResolutionRow.Height = new GridLength(0);
+            GraphicsThemeRow.Height = new GridLength(0);
+            GraphicsFontRow.Height = new GridLength(0);
+            GraphicsMessageBarRow.Height = new GridLength(0);
+            GraphicsPetSelectionRow.Height = new GridLength(0);
+            GraphicsPetDescriptionRow.Height = new GridLength(0);
+            ResolutionControlRow.Height = new GridLength(0);
+
+            MusicRecognitionHeader.Visibility = Visibility.Collapsed;
+            MusicRecognitionSettings.Visibility = Visibility.Collapsed;
+
+            MainTab.SelectedIndex = 0;
+        }
+
+        private void EnsureStandaloneTabIsVisible()
+        {
+            if (RuntimeFeatures.StandaloneMode &&
+                MainTab.SelectedIndex is 1 or 3 or 4 or 5)
+                MainTab.SelectedIndex = 0;
+        }
+
         private void tb_seach_menu_textchange(object sender, TextChangedEventArgs e)
         {
             if (!AllowChange)
@@ -845,6 +899,7 @@ namespace VPet_Simulator.Windows
 
         public new void Show()
         {
+            EnsureStandaloneTabIsVisible();
             if (MainTab.SelectedIndex == 2)
             {
                 voicetimer.Start();

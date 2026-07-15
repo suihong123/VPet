@@ -213,6 +213,180 @@ jobs:
           path: standalone-cat-windows-x64-test
           retention-days: 3
 
+      - name: Prepare lean internal Windows test package
+        if: github.event_name == 'workflow_dispatch' && inputs.upload_test_package == true && steps.build-windows.outputs.exit_code == '0'
+        shell: pwsh
+        run: |
+          $fullPackageRoot = "standalone-cat-windows-x64-test"
+          $leanPackageRoot = "artifacts/standalone-cat-windows-x64-lean-test"
+          $manifestPath = "standalone-cat-lean-manifest.txt"
+
+          if (-not (Test-Path $fullPackageRoot -PathType Container)) {
+            Write-Error "Full test package staging directory is missing: $fullPackageRoot"
+            exit 1
+          }
+
+          $fullVupRoot = Join-Path $fullPackageRoot "mod/0000_core/pet/vup"
+          $fullGalleryRoot = Join-Path $fullPackageRoot "mod/0000_core/file"
+          if (-not (Test-Path $fullVupRoot -PathType Container)) {
+            Write-Error "Full test package no longer contains the original vup resources."
+            exit 1
+          }
+          if (-not (Test-Path $fullGalleryRoot -PathType Container)) {
+            Write-Error "Full test package no longer contains the original gallery archives."
+            exit 1
+          }
+
+          if (Test-Path $leanPackageRoot) {
+            Remove-Item $leanPackageRoot -Recurse -Force
+          }
+          New-Item -ItemType Directory -Path $leanPackageRoot -Force | Out-Null
+          Copy-Item -Path (Join-Path $fullPackageRoot "*") -Destination $leanPackageRoot -Recurse -Force
+
+          $leanVupRoot = Join-Path $leanPackageRoot "mod/0000_core/pet/vup"
+          $leanGalleryRoot = Join-Path $leanPackageRoot "mod/0000_core/file"
+          Remove-Item $leanVupRoot -Recurse -Force
+          Remove-Item $leanGalleryRoot -Recurse -Force
+
+          if (-not (Test-Path $fullVupRoot -PathType Container) -or
+              -not (Test-Path $fullGalleryRoot -PathType Container)) {
+            Write-Error "Lean staging unexpectedly modified the full test package."
+            exit 1
+          }
+
+          Copy-Item -Path "LICENSE" -Destination (Join-Path $leanPackageRoot "LICENSE") -Force
+
+          $requiredFiles = @(
+            "VPet-Simulator.Windows.exe",
+            "VPet-Simulator.Windows.dll",
+            "VPet-Simulator.Core.dll",
+            "VPet-Simulator.Windows.Interface.dll",
+            "mod/0000_core/info.lps",
+            "mod/0000_core/pet/cat.lps",
+            "LICENSE"
+          )
+          foreach ($requiredFile in $requiredFiles) {
+            $requiredPath = Join-Path $leanPackageRoot $requiredFile
+            if (-not (Test-Path $requiredPath -PathType Leaf)) {
+              Write-Error "Lean package is missing required file: $requiredFile"
+              exit 1
+            }
+          }
+
+          $catRoot = Join-Path $leanPackageRoot "mod/0000_core/pet/cat"
+          if (-not (Test-Path $catRoot -PathType Container)) {
+            Write-Error "Lean package is missing the cat resource directory."
+            exit 1
+          }
+
+          $catPngFiles = @(Get-ChildItem $catRoot -Recurse -File -Filter *.png)
+          if ($catPngFiles.Count -ne 12) {
+            Write-Error "Expected 12 cat PNG files in lean package, found $($catPngFiles.Count)."
+            exit 1
+          }
+
+          if (Test-Path $leanVupRoot) {
+            Write-Error "Lean package still contains mod/0000_core/pet/vup."
+            exit 1
+          }
+          if (Test-Path $leanGalleryRoot) {
+            Write-Error "Lean package still contains mod/0000_core/file."
+            exit 1
+          }
+          $galleryArchives = @(Get-ChildItem (Join-Path $leanPackageRoot "mod/0000_core") -Recurse -File -Filter *.zlps |
+            Where-Object { $_.FullName -match '[\\/]file[\\/]' })
+          if ($galleryArchives.Count -ne 0) {
+            Write-Error "Lean package still contains gallery .zlps archives."
+            exit 1
+          }
+
+          function Get-PackageStats([string] $path) {
+            $files = @(Get-ChildItem $path -Recurse -File -Force)
+            $bytes = [long](($files | Measure-Object -Property Length -Sum).Sum)
+            return [PSCustomObject]@{
+              FileCount = $files.Count
+              Bytes = $bytes
+            }
+          }
+
+          $beforeStats = Get-PackageStats $fullPackageRoot
+          $afterStats = Get-PackageStats $leanPackageRoot
+          $reducedBytes = $beforeStats.Bytes - $afterStats.Bytes
+          $reducedPercent = if ($beforeStats.Bytes -eq 0) { 0 } else { ($reducedBytes / $beforeStats.Bytes) * 100 }
+          $catBytes = [long](($catPngFiles | Measure-Object -Property Length -Sum).Sum)
+          $largestFiles = @(Get-ChildItem $leanPackageRoot -Recurse -File -Force |
+            Sort-Object Length -Descending |
+            Select-Object -First 30)
+          $coreDirectories = @(Get-ChildItem (Join-Path $leanPackageRoot "mod/0000_core") -Directory |
+            Sort-Object Name)
+
+          @(
+            "commit_sha=$env:GITHUB_SHA",
+            "build_time_utc=$([DateTime]::UtcNow.ToString('o'))",
+            "before_file_count=$($beforeStats.FileCount)",
+            "after_file_count=$($afterStats.FileCount)",
+            "before_total_bytes=$($beforeStats.Bytes)",
+            "after_total_bytes=$($afterStats.Bytes)",
+            "reduced_bytes=$reducedBytes",
+            "reduced_percent=$($reducedPercent.ToString('F2'))",
+            "excluded=mod/0000_core/pet/vup",
+            "excluded=mod/0000_core/file",
+            "cat_png_count=$($catPngFiles.Count)",
+            "cat_png_total_bytes=$catBytes",
+            "",
+            "largest_30_files:"
+          ) | Set-Content $manifestPath
+
+          $leanRootPath = (Resolve-Path $leanPackageRoot).Path
+          foreach ($file in $largestFiles) {
+            $relativePath = $file.FullName.Substring($leanRootPath.Length + 1).Replace('\', '/')
+            "$relativePath`t$($file.Length)" | Add-Content $manifestPath
+          }
+
+          "" | Add-Content $manifestPath
+          "mod/0000_core_remaining_directories:" | Add-Content $manifestPath
+          foreach ($directory in $coreDirectories) {
+            "mod/0000_core/$($directory.Name)" | Add-Content $manifestPath
+          }
+
+          @"
+          ## Standalone cat lean test package
+
+          | Metric | Value |
+          | --- | ---: |
+          | Commit | $env:GITHUB_SHA |
+          | Files before | $($beforeStats.FileCount) |
+          | Files after | $($afterStats.FileCount) |
+          | Bytes before | $($beforeStats.Bytes) |
+          | Bytes after | $($afterStats.Bytes) |
+          | Bytes removed | $reducedBytes |
+          | Reduction | $($reducedPercent.ToString('F2'))% |
+          | Cat PNG files | $($catPngFiles.Count) |
+          | Cat PNG bytes | $catBytes |
+
+          Excluded only:
+          - mod/0000_core/pet/vup
+          - mod/0000_core/file
+          "@ | Add-Content $env:GITHUB_STEP_SUMMARY
+
+          Get-Content $manifestPath
+
+      - name: Upload lean internal Windows test package
+        if: github.event_name == 'workflow_dispatch' && inputs.upload_test_package == true && steps.build-windows.outputs.exit_code == '0'
+        uses: actions/upload-artifact@v4
+        with:
+          name: standalone-cat-windows-x64-lean-test
+          path: artifacts/standalone-cat-windows-x64-lean-test
+          retention-days: 3
+
+      - name: Upload lean package manifest
+        if: github.event_name == 'workflow_dispatch' && inputs.upload_test_package == true && steps.build-windows.outputs.exit_code == '0'
+        uses: actions/upload-artifact@v4
+        with:
+          name: standalone-cat-lean-manifest
+          path: standalone-cat-lean-manifest.txt
+          retention-days: 7
+
       - name: Fail if Windows build failed
         if: always()
         shell: pwsh

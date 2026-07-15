@@ -1517,6 +1517,7 @@ namespace VPet_Simulator.Windows
         /// <param name="Path">MOD地址</param>
         public async Task GameLoad(List<DirectoryInfo> Path)
         {
+            StandaloneDebugLogger.Log("[StandaloneDebug] GameLoad Begin");
             MODPath = Path.GroupBy(x => x.FullName).Select(group => group.First()).ToList();
             await Dispatcher.InvokeAsync(new Action(() => LoadingText.Content = "Loading MOD"));
             //加载mod
@@ -1533,6 +1534,7 @@ namespace VPet_Simulator.Windows
             }
 
             CoreMOD.NowLoading = null;
+            StandaloneDebugLogger.Log("[StandaloneDebug] CoreMOD Finished");
 
             //判断是否需要清空缓存
             if (App.MainWindows.Count == 1 && Set.LastCacheDate < CoreMODs.Max(x => x.CacheDate))
@@ -1591,6 +1593,7 @@ namespace VPet_Simulator.Windows
                 }
                 catch (Exception ex)
                 {
+                    StandaloneDebugLogger.Log($"[StandaloneDebug] Exception:\n{ex}");
                     MessageBoxX.Show("存档损毁,无法加载该存档\n可能是数据溢出/超模导致的" + '\n' + ex.Message, "存档损毁".Translate());
                     //如果加载存档失败了,试试加载备份,如果没备份,就新建一个
                     LoadLatestSave(petloader.PetName);
@@ -1773,25 +1776,36 @@ namespace VPet_Simulator.Windows
 
 
             //await Dispatcher.InvokeAsync(new Action(() => LoadingText.Content = "尝试加载游戏动画".Translate()));
+            StandaloneDebugLogger.Log("[StandaloneDebug] Enter Loading Animation Cache");
             await Dispatcher.InvokeAsync(new Action(() => LoadingText.Content = "尝试加载动画和生成缓存\n该步骤可能会耗时比较长\n请耐心等待".Translate()));
+            StandaloneDebugLogger.Log("[StandaloneDebug] Animation Load Begin");
             Core.Graph = petloader.Graph(Set.Resolution, Dispatcher);
             StandaloneDebugLogger.Log($"[StandaloneDebug] Scanned Graph Count: {petloader.GraphCount}");
+            StandaloneDebugLogger.Log("[StandaloneDebug] PetLoader Finished\n[StandaloneDebug] Animation Graph Scan Finished");
 
+            StandaloneDebugLogger.Log("[StandaloneDebug] Create Main Begin\n[StandaloneDebug] Waiting: Create Main Dispatcher.InvokeAsync\n[StandaloneDebug] Before Wait");
             Main = await Dispatcher.InvokeAsync(() => new Main(Core));
+            StandaloneDebugLogger.Log("[StandaloneDebug] Create Main Finished\n[StandaloneDebug] Waiting: Create Main Dispatcher.InvokeAsync\n[StandaloneDebug] After Wait");
 
+            StandaloneDebugLogger.Log("[StandaloneDebug] LoadALL Begin (GameLoad)");
             Main.LoadALL((c) =>
             {
+                StandaloneDebugLogger.Log("[StandaloneDebug] Waiting: Animation progress Dispatcher.Invoke\n[StandaloneDebug] Before Wait");
                 Dispatcher.Invoke(() => LoadingText.Content = "尝试加载动画和生成缓存\n该步骤可能会耗时比较长\n请耐心等待".Translate()
                 + $"\n  {c} / {petloader.GraphCount}");
+                StandaloneDebugLogger.Log("[StandaloneDebug] Waiting: Animation progress Dispatcher.Invoke\n[StandaloneDebug] After Wait");
             }
             //#if NewYear
             //            , Core.Graph.FindGraph("newyear", AnimatType.Single, Core.Save.Mode)
             //#endif
             );
+            StandaloneDebugLogger.Log("[StandaloneDebug] LoadALL Finished (GameLoad)\n[StandaloneDebug] Animation Load Finished\n[StandaloneDebug] Cache Generate Finished\n[StandaloneDebug] Exit Loading Animation Cache");
             Main.NoFunctionMOD = Set.CalFunState;
             Main.ToolBar.SetStandaloneMode(RuntimeFeatures.StandaloneMode);
+            StandaloneDebugLogger.Log("[StandaloneDebug] Waiting: Post-LoadALL Dispatcher.InvokeAsync\n[StandaloneDebug] Before Wait");
             await Dispatcher.InvokeAsync(() =>
               {
+                  StandaloneDebugLogger.Log("[StandaloneDebug] Post-LoadALL UI initialization Begin");
                   //清空资源
                   Main.Resources = Application.Current.Resources;
                   Main.MsgBar.This.Resources = Application.Current.Resources;
@@ -1916,6 +1930,7 @@ namespace VPet_Simulator.Windows
                       }
                       catch (Exception e)
                       {
+                          StandaloneDebugLogger.Log($"[StandaloneDebug] Exception:\n{e}");
                           NoticeBox.Show("由于插件引起的游戏启动错误".Translate() + "\n" + e.ToString(), "由于插件引起的游戏启动错误".Translate() + '-' + mp.PluginName);
                       }
                   Foods.ForEach(item => item.LoadImageSource(this));
@@ -2095,20 +2110,26 @@ namespace VPet_Simulator.Windows
                   };
                   Main.PlayVoiceVolume = Set.VoiceVolume;
                   Main.FunctionSpendHandle += StatisticsCalHandle;
+                  StandaloneDebugLogger.Log("[StandaloneDebug] Window Show Begin");
                   DisplayGrid.Child = Main;
+                  StandaloneDebugLogger.Log("[StandaloneDebug] Main content attached");
                   Task.Run(async () =>
                   {
+                      StandaloneDebugLogger.Log("[StandaloneDebug] Waiting: Main.IsWorking\nBefore Wait");
                       while (!Main.IsWorking)
                       {
                           Thread.Sleep(100);
                       }
+                      StandaloneDebugLogger.Log("[StandaloneDebug] Waiting: Main.IsWorking\nAfter Wait");
                       await Dispatcher.InvokeAsync(async () =>
                       {
+                          StandaloneDebugLogger.Log("[StandaloneDebug] Waiting: Hide LoadingText Dispatcher.InvokeAsync\nBefore Wait");
                           while (LoadingText.Visibility != Visibility.Collapsed)
                           {
                               LoadingText.Visibility = Visibility.Collapsed;
                               await Task.Delay(1000);
                           }
+                          StandaloneDebugLogger.Log("[StandaloneDebug] Waiting: Hide LoadingText Dispatcher.InvokeAsync\nAfter Wait\n[StandaloneDebug] Window Show Finished");
                       });
                   });
 
@@ -2565,6 +2586,7 @@ namespace VPet_Simulator.Windows
                       }
                       catch (Exception e)
                       {
+                          StandaloneDebugLogger.Log($"[StandaloneDebug] Exception:\n{e}");
                           NoticeBox.Show("由于插件引起的游戏启动错误".Translate() + "\n" + e.ToString(), "由于插件引起的游戏启动错误".Translate() + '-' + mp.PluginName);
                       }
 
@@ -2579,7 +2601,9 @@ namespace VPet_Simulator.Windows
                   }
                   if (Set.DeBug)
                       ActivityLogs.CollectionChanged += ActivityLogs_WriteFile;
+                  StandaloneDebugLogger.Log("[StandaloneDebug] Post-LoadALL UI initialization Finished");
               });
+            StandaloneDebugLogger.Log("[StandaloneDebug] Waiting: Post-LoadALL Dispatcher.InvokeAsync\n[StandaloneDebug] After Wait\n[StandaloneDebug] GameLoad Finished");
 
 
             ////游戏提示

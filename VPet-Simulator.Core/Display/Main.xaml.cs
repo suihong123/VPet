@@ -55,6 +55,7 @@ namespace VPet_Simulator.Core
 
         public void Load_0_BaseConsole()
         {
+            StandaloneDebugLogger.Log("[StandaloneDebug] Waiting: Load_0_BaseConsole Dispatcher.Invoke\nBefore Wait");
             Dispatcher.Invoke(() =>
             {
                 WorkTimer = new WorkTimer(this);
@@ -67,6 +68,7 @@ namespace VPet_Simulator.Core
                 MsgBar.Visibility = Visibility.Collapsed;
                 UIGrid.Children.Add(MsgBar.This);
             });
+            StandaloneDebugLogger.Log("[StandaloneDebug] Waiting: Load_0_BaseConsole Dispatcher.Invoke\nAfter Wait");
         }
         public void Load_3_BindingTimer()
         {
@@ -203,7 +205,9 @@ namespace VPet_Simulator.Core
         /// </summary>
         public void Load_24_WaitAndStart()
         {
+            StandaloneDebugLogger.Log("[StandaloneDebug] Waiting: Load_2_WaitGraph().Wait()\nBefore Wait");
             Load_2_WaitGraph().Wait();
+            StandaloneDebugLogger.Log("[StandaloneDebug] Waiting: Load_2_WaitGraph().Wait()\nAfter Wait");
             Load_4_Start();
         }
         /// <summary>
@@ -213,7 +217,9 @@ namespace VPet_Simulator.Core
         /// <param name="startUPGraph">开始运行初始动画</param>
         public void Load_24_WaitAndStart(Action<int> WaitCountAction, IGraph startUPGraph = null)
         {
+            StandaloneDebugLogger.Log("[StandaloneDebug] Waiting: Load_2_WaitGraph(WaitCountAction).Wait()\nBefore Wait");
             Load_2_WaitGraph(WaitCountAction).Wait();
+            StandaloneDebugLogger.Log("[StandaloneDebug] Waiting: Load_2_WaitGraph(WaitCountAction).Wait()\nAfter Wait");
             Load_4_Start(startUPGraph);
         }
 
@@ -248,11 +254,15 @@ namespace VPet_Simulator.Core
         /// <param name="startUPGraph">开始运行初始动画</param>
         public void LoadALL(Action<int> WaitCountAction = null, IGraph startUPGraph = null)
         {
+            StandaloneDebugLogger.Log("[StandaloneDebug] LoadALL Begin");
             Load_0_BaseConsole();
             Load_2_TouchEvent();
+            StandaloneDebugLogger.Log("[StandaloneDebug] Waiting: LoadALL Load_2_WaitGraph().Wait()\nBefore Wait");
             Load_2_WaitGraph(WaitCountAction).Wait();
+            StandaloneDebugLogger.Log("[StandaloneDebug] Waiting: LoadALL Load_2_WaitGraph().Wait()\nAfter Wait");
             Load_3_BindingTimer();
             Load_4_Start(startUPGraph);
+            StandaloneDebugLogger.Log("[StandaloneDebug] LoadALL Finished");
         }
 
         private void Labledisplaytimer_Elapsed(object sender, System.Timers.ElapsedEventArgs e)

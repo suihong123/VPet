@@ -43,7 +43,8 @@ namespace VPet_Simulator.Core
                 var lines = (message ?? string.Empty).Replace("\r\n", "\n").Split('\n');
                 var output = new StringBuilder();
                 foreach (var line in lines)
-                    output.Append('[').Append(timestamp).Append("] ").AppendLine(line);
+                    output.Append('[').Append(timestamp).Append("][Thread:")
+                        .Append(Environment.CurrentManagedThreadId).Append("] ").AppendLine(line);
 
                 lock (WriteLock)
                     File.AppendAllText(LogFilePath, output.ToString());

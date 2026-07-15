@@ -1806,7 +1806,15 @@ namespace VPet_Simulator.Windows
                 Main.NoFunctionMOD = Set.CalFunState;
                 StandaloneDebugLogger.Log("[StandaloneDebug] StartupPostCache 01 End - Set Main.NoFunctionMOD");
                 StandaloneDebugLogger.Log("[StandaloneDebug] StartupPostCache 02 Begin - Main.ToolBar.SetStandaloneMode");
-                Main.ToolBar.SetStandaloneMode(RuntimeFeatures.StandaloneMode);
+                if (Main.ToolBar.Dispatcher.CheckAccess())
+                {
+                    Main.ToolBar.SetStandaloneMode(RuntimeFeatures.StandaloneMode);
+                }
+                else
+                {
+                    Main.ToolBar.Dispatcher.Invoke(() =>
+                        Main.ToolBar.SetStandaloneMode(RuntimeFeatures.StandaloneMode));
+                }
                 StandaloneDebugLogger.Log("[StandaloneDebug] StartupPostCache 02 End - Main.ToolBar.SetStandaloneMode");
                 StandaloneDebugLogger.Log("[StandaloneDebug] StartupPostCache 03 Begin - Post-LoadALL Dispatcher.InvokeAsync");
                 StandaloneDebugLogger.Log("[StandaloneDebug] Waiting: Post-LoadALL Dispatcher.InvokeAsync\n[StandaloneDebug] Before Wait");

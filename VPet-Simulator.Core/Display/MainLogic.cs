@@ -206,6 +206,9 @@ namespace VPet_Simulator.Core
         /// <param name="time">持续时间</param>
         public void LabelDisplayShowChangeNumber(string text, double changenum1, double changenum2 = 0, int time = 2000)
         {
+            if (!ShowStatusChangeOverlay)
+                return;
+
             if (labeldisplayhash == text.GetHashCode())
             {
                 labeldisplaychangenum1 += changenum1;

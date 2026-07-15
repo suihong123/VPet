@@ -35,6 +35,8 @@ namespace VPet_Simulator.Windows
         {
             InitializeComponent();
             this.mw = mw;
+            if (RuntimeFeatures.StandaloneMode)
+                Visibility = Visibility.Collapsed;
             mw.Main.ToolBar.EventShow += RelsSelect;
             RelsSelect();
         }

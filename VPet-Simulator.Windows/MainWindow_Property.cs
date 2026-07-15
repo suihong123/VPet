@@ -75,7 +75,17 @@ public partial class MainWindow
     internal List<CoreMOD> CoreMODs = new List<CoreMOD>();
     public GameCore Core { get; set; } = new GameCore();
     public List<Window> Windows { get; set; } = new List<Window>();
-    public Main Main { get; set; }
+    private Main main;
+    public Main Main
+    {
+        get => main;
+        set
+        {
+            main = value;
+            if (main != null)
+                main.ShowStatusChangeOverlay = !RuntimeFeatures.StandaloneMode;
+        }
+    }
     public UIElement TalkBox;
     public winGameSetting winSetting { get; set; }
     public winBetterBuy winBetterBuy { get; set; }

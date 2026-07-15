@@ -50,6 +50,10 @@ namespace VPet_Simulator.Core
         /// 是否开始运行
         /// </summary>
         public bool IsWorking { get; private set; } = false;
+        /// <summary>
+        /// Whether structured status-change overlays should be shown.
+        /// </summary>
+        public bool ShowStatusChangeOverlay { get; set; } = true;
         public SoundPlayer soundPlayer = new SoundPlayer();
         public bool windowMediaPlayerAvailable = true;
 

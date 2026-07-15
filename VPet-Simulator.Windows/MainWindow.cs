@@ -1800,22 +1800,38 @@ namespace VPet_Simulator.Windows
             //#endif
             );
             StandaloneDebugLogger.Log("[StandaloneDebug] LoadALL Finished (GameLoad)\n[StandaloneDebug] Animation Load Finished\n[StandaloneDebug] Cache Generate Finished\n[StandaloneDebug] Exit Loading Animation Cache");
-            Main.NoFunctionMOD = Set.CalFunState;
-            Main.ToolBar.SetStandaloneMode(RuntimeFeatures.StandaloneMode);
-            StandaloneDebugLogger.Log("[StandaloneDebug] Waiting: Post-LoadALL Dispatcher.InvokeAsync\n[StandaloneDebug] Before Wait");
-            await Dispatcher.InvokeAsync(() =>
+            try
+            {
+                StandaloneDebugLogger.Log("[StandaloneDebug] StartupPostCache 01 Begin - Set Main.NoFunctionMOD");
+                Main.NoFunctionMOD = Set.CalFunState;
+                StandaloneDebugLogger.Log("[StandaloneDebug] StartupPostCache 01 End - Set Main.NoFunctionMOD");
+                StandaloneDebugLogger.Log("[StandaloneDebug] StartupPostCache 02 Begin - Main.ToolBar.SetStandaloneMode");
+                Main.ToolBar.SetStandaloneMode(RuntimeFeatures.StandaloneMode);
+                StandaloneDebugLogger.Log("[StandaloneDebug] StartupPostCache 02 End - Main.ToolBar.SetStandaloneMode");
+                StandaloneDebugLogger.Log("[StandaloneDebug] StartupPostCache 03 Begin - Post-LoadALL Dispatcher.InvokeAsync");
+                StandaloneDebugLogger.Log("[StandaloneDebug] Waiting: Post-LoadALL Dispatcher.InvokeAsync\n[StandaloneDebug] Before Wait");
+                await Dispatcher.InvokeAsync(() =>
               {
                   StandaloneDebugLogger.Log("[StandaloneDebug] Post-LoadALL UI initialization Begin");
+                  StandaloneDebugLogger.Log("[StandaloneDebug] StartupPostCache 04 Begin - Assign UI resources");
                   //清空资源
                   Main.Resources = Application.Current.Resources;
                   Main.MsgBar.This.Resources = Application.Current.Resources;
                   Main.ToolBar.Resources = Application.Current.Resources;
+                  StandaloneDebugLogger.Log("[StandaloneDebug] StartupPostCache 04 End - Assign UI resources");
+                  StandaloneDebugLogger.Log("[StandaloneDebug] StartupPostCache 05 Begin - Main.ToolBar.LoadClean");
                   Main.ToolBar.LoadClean();
+                  StandaloneDebugLogger.Log("[StandaloneDebug] StartupPostCache 05 End - Main.ToolBar.LoadClean");
+                  StandaloneDebugLogger.Log("[StandaloneDebug] StartupPostCache 06 Begin - Main.WorkList");
                   Main.WorkList(out List<Work> ws, out List<Work> ss, out List<Work> ps);
+                  StandaloneDebugLogger.Log($"[StandaloneDebug] StartupPostCache 06 End - Main.WorkList: work={ws.Count}, study={ss.Count}, play={ps.Count}");
 
                   //日程表加载
+                  StandaloneDebugLogger.Log("[StandaloneDebug] StartupPostCache 07 Begin - Create ScheduleTask");
                   ScheduleTask = new ScheduleTask(this);
+                  StandaloneDebugLogger.Log("[StandaloneDebug] StartupPostCache 07 End - Create ScheduleTask");
 
+                  StandaloneDebugLogger.Log("[StandaloneDebug] StartupPostCache 08 Begin - Initialize work menus");
                   if (ws.Count == 0)
                   {
                       Main.ToolBar.MenuWork.Visibility = Visibility.Collapsed;
@@ -1883,11 +1899,14 @@ namespace VPet_Simulator.Windows
                       WorkStarMenu.Items.Add(mi);
                   }
                   Main.ToolBar.MenuInteract.Items.Add(WorkStarMenu);
+                  StandaloneDebugLogger.Log("[StandaloneDebug] StartupPostCache 08 End - Initialize work menus");
 
                   //加载主题:
+                  StandaloneDebugLogger.Log("[StandaloneDebug] StartupPostCache 09 Begin - Load theme and font");
                   LoadTheme(Set.Theme);
                   //加载字体
                   LoadFont(Set.Font);
+                  StandaloneDebugLogger.Log("[StandaloneDebug] StartupPostCache 09 End - Load theme and font");
 
                   LoadingText.Content = "正在加载游戏\n该步骤可能会耗时比较长\n请耐心等待".Translate();
 
@@ -1923,6 +1942,7 @@ namespace VPet_Simulator.Windows
                   Main.ToolBar.MenuMODConfig.Items.Add(m);
 
                   //加载游戏创意工坊插件
+                  StandaloneDebugLogger.Log("[StandaloneDebug] StartupPostCache 10 Begin - Load plugins");
                   foreach (MainPlugin mp in Plugins)
                       try //不要识图用!DEBUG去掉try, 在主线程也会导致错误显示不出来的
                       {
@@ -1933,6 +1953,8 @@ namespace VPet_Simulator.Windows
                           StandaloneDebugLogger.Log($"[StandaloneDebug] Exception:\n{e}");
                           NoticeBox.Show("由于插件引起的游戏启动错误".Translate() + "\n" + e.ToString(), "由于插件引起的游戏启动错误".Translate() + '-' + mp.PluginName);
                       }
+                  StandaloneDebugLogger.Log("[StandaloneDebug] StartupPostCache 10 End - Load plugins");
+                  StandaloneDebugLogger.Log("[StandaloneDebug] StartupPostCache 11 Begin - Load food, photo and item sources");
                   Foods.ForEach(item => item.LoadImageSource(this));
                   Photos.ForEach(item => item.LoadUserInfo(this));
 
@@ -2019,6 +2041,7 @@ namespace VPet_Simulator.Windows
                   }
                   //每日礼盒
                   everydaygift();
+                  StandaloneDebugLogger.Log("[StandaloneDebug] StartupPostCache 11 End - Load food, photo and item sources");
 
 
 
@@ -2067,8 +2090,10 @@ namespace VPet_Simulator.Windows
                   }
 
                   //窗口部件
+                  StandaloneDebugLogger.Log("[StandaloneDebug] StartupPostCache 12 Begin - Create setting and shop windows");
                   winSetting = new winGameSetting(this);
                   winBetterBuy = new winBetterBuy(this);
+                  StandaloneDebugLogger.Log("[StandaloneDebug] StartupPostCache 12 End - Create setting and shop windows");
 
                   Main.DefaultClickAction = () =>
                   {
@@ -2110,19 +2135,24 @@ namespace VPet_Simulator.Windows
                   };
                   Main.PlayVoiceVolume = Set.VoiceVolume;
                   Main.FunctionSpendHandle += StatisticsCalHandle;
-                  StandaloneDebugLogger.Log("[StandaloneDebug] Window Show Begin");
+                  StandaloneDebugLogger.Log("[StandaloneDebug] StartupPostCache 13 Begin - Mount Main content\n[StandaloneDebug] Window Show Begin");
                   DisplayGrid.Child = Main;
-                  StandaloneDebugLogger.Log("[StandaloneDebug] Main content attached");
+                  StandaloneDebugLogger.Log("[StandaloneDebug] Main content attached\n[StandaloneDebug] StartupPostCache 13 End - Mount Main content");
+                  StandaloneDebugLogger.Log("[StandaloneDebug] StartupPostCache 14 Begin - Schedule Main.IsWorking and LoadingText task");
                   Task.Run(async () =>
                   {
+                      StandaloneDebugLogger.Log("[StandaloneDebug] StartupPostCache 14.1 Begin - Wait Main.IsWorking");
                       StandaloneDebugLogger.Log("[StandaloneDebug] Waiting: Main.IsWorking\nBefore Wait");
                       while (!Main.IsWorking)
                       {
                           Thread.Sleep(100);
                       }
                       StandaloneDebugLogger.Log("[StandaloneDebug] Waiting: Main.IsWorking\nAfter Wait");
+                      StandaloneDebugLogger.Log("[StandaloneDebug] StartupPostCache 14.1 End - Wait Main.IsWorking");
+                      StandaloneDebugLogger.Log("[StandaloneDebug] StartupPostCache 14.2 Begin - Hide LoadingText Dispatcher.InvokeAsync");
                       await Dispatcher.InvokeAsync(async () =>
                       {
+                          StandaloneDebugLogger.Log("[StandaloneDebug] StartupPostCache 14.3 Begin - Set LoadingText.Visibility");
                           StandaloneDebugLogger.Log("[StandaloneDebug] Waiting: Hide LoadingText Dispatcher.InvokeAsync\nBefore Wait");
                           while (LoadingText.Visibility != Visibility.Collapsed)
                           {
@@ -2130,9 +2160,13 @@ namespace VPet_Simulator.Windows
                               await Task.Delay(1000);
                           }
                           StandaloneDebugLogger.Log("[StandaloneDebug] Waiting: Hide LoadingText Dispatcher.InvokeAsync\nAfter Wait\n[StandaloneDebug] Window Show Finished");
+                          StandaloneDebugLogger.Log("[StandaloneDebug] StartupPostCache 14.3 End - Set LoadingText.Visibility");
                       });
+                      StandaloneDebugLogger.Log("[StandaloneDebug] StartupPostCache 14.2 End - Hide LoadingText Dispatcher.InvokeAsync");
                   });
+                  StandaloneDebugLogger.Log("[StandaloneDebug] StartupPostCache 14 End - Schedule Main.IsWorking and LoadingText task");
 
+                  StandaloneDebugLogger.Log("[StandaloneDebug] StartupPostCache 15 Begin - Initialize setting menu entries");
                   if (RuntimeFeatures.StandaloneMode)
                   {
                       Main.ToolBar.MenuSetting.Items.Clear();
@@ -2167,6 +2201,7 @@ namespace VPet_Simulator.Windows
                           winSetting.Activate();
                       });
                   }
+                  StandaloneDebugLogger.Log("[StandaloneDebug] StartupPostCache 15 End - Initialize setting menu entries");
 
                   //this.Background = new ImageBrush(new BitmapImage(new Uri("pack://application:,,,/Res/TopLogo2019.PNG")));
 
@@ -2178,6 +2213,7 @@ namespace VPet_Simulator.Windows
                   //        eat.Run(b, new BitmapImage(new Uri("pack://application:,,,/Res/汉堡.png")), Main.DisplayToNomal);
                   //    }
                   //);
+                  StandaloneDebugLogger.Log("[StandaloneDebug] StartupPostCache 16 Begin - Initialize feed menu entries");
                   if (!RuntimeFeatures.StandaloneMode)
                   {
                       Main.ToolBar.AddMenuButton(ToolBar.MenuType.Feed, "吃饭".Translate(), () =>
@@ -2211,14 +2247,18 @@ namespace VPet_Simulator.Windows
                           }
                       });
                   }
+                  StandaloneDebugLogger.Log("[StandaloneDebug] StartupPostCache 16 End - Initialize feed menu entries");
+                  StandaloneDebugLogger.Log("[StandaloneDebug] StartupPostCache 17 Begin - Configure movement and logic");
                   Main.SetMoveMode(Set.AllowMove, Set.SmartMove, Set.SmartMoveInterval * 1000);
                   Main.SetLogicInterval((int)(Set.LogicInterval * 1000));
                   if (Set.MessageBarOutside)
                       Main.MsgBar.SetPlaceOUT();
 
                   Main.WorkCheck = WorkCheck;
+                  StandaloneDebugLogger.Log("[StandaloneDebug] StartupPostCache 17 End - Configure movement and logic");
 
                   //加载图标
+                  StandaloneDebugLogger.Log("[StandaloneDebug] StartupPostCache 18 Begin - Initialize tray icon and menu");
                   notifyIcon = new NotifyIcon();
                   notifyIcon.Text = (RuntimeFeatures.StandaloneMode ? "Coco Cat" : "虚拟桌宠模拟器".Translate()) + PrefixSave;
                   ContextMenu m_menu;
@@ -2287,6 +2327,8 @@ namespace VPet_Simulator.Windows
                   {
                       winSetting.Show();
                   };
+                  StandaloneDebugLogger.Log("[StandaloneDebug] StartupPostCache 18 End - Initialize tray icon and menu");
+                  StandaloneDebugLogger.Log("[StandaloneDebug] StartupPostCache 19 Begin - Register runtime handlers and startup notices");
                   if (Set.StartUPBoot == true && !Set["v"][(gbol)"newverstartup"])
                   {//更新到最新版开机启动方式
                       try
@@ -2294,9 +2336,9 @@ namespace VPet_Simulator.Windows
                           winSetting.GenStartUP();
                           Set["v"][(gbol)"newverstartup"] = true;
                       }
-                      catch
+                      catch (Exception e)
                       {
-
+                          StandaloneDebugLogger.Log($"[StandaloneDebug] Exception:\n{e}");
                       }
                   }
 
@@ -2601,9 +2643,19 @@ namespace VPet_Simulator.Windows
                   }
                   if (Set.DeBug)
                       ActivityLogs.CollectionChanged += ActivityLogs_WriteFile;
+                  StandaloneDebugLogger.Log("[StandaloneDebug] StartupPostCache 19 End - Register runtime handlers and startup notices");
                   StandaloneDebugLogger.Log("[StandaloneDebug] Post-LoadALL UI initialization Finished");
               });
-            StandaloneDebugLogger.Log("[StandaloneDebug] Waiting: Post-LoadALL Dispatcher.InvokeAsync\n[StandaloneDebug] After Wait\n[StandaloneDebug] GameLoad Finished");
+                StandaloneDebugLogger.Log("[StandaloneDebug] Waiting: Post-LoadALL Dispatcher.InvokeAsync\n[StandaloneDebug] After Wait");
+                StandaloneDebugLogger.Log("[StandaloneDebug] StartupPostCache 03 End - Post-LoadALL Dispatcher.InvokeAsync");
+                StandaloneDebugLogger.Log("[StandaloneDebug] StartupPostCache 20 Begin - Complete GameLoad");
+                StandaloneDebugLogger.Log("[StandaloneDebug] GameLoad Finished\n[StandaloneDebug] StartupPostCache 20 End - Complete GameLoad");
+            }
+            catch (Exception e)
+            {
+                StandaloneDebugLogger.Log($"[StandaloneDebug] Post-cache startup exception:\n{e}");
+                throw;
+            }
 
 
             ////游戏提示

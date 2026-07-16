@@ -20,7 +20,19 @@ namespace VPet_Simulator.Windows
         {
             Environment.CurrentDirectory =
                 Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location)!;
-            StandaloneDebugLogger.Log("[StandaloneDebug] Standalone startup");
+            if (RuntimeFeatures.StandaloneMode)
+            {
+                StandaloneDebugLogger.Log(
+                    $"[StandaloneDebug] Standalone startup\n" +
+                    $"[StandaloneDebug] Startup invocation begin\n" +
+                    $"Startup time: {DateTime.Now:O}\n" +
+                    $"StandaloneMode: {RuntimeFeatures.StandaloneMode}\n" +
+                    $"Environment.ProcessPath: {Environment.ProcessPath}\n" +
+                    $"Environment.CurrentDirectory: {Environment.CurrentDirectory}\n" +
+                    $"AppContext.BaseDirectory: {AppContext.BaseDirectory}\n" +
+                    $"Startup arguments: {string.Join(" | ", Environment.GetCommandLineArgs())}\n" +
+                    $"[StandaloneDebug] Startup invocation environment validated");
+            }
 #if !DEBUG
             base.DispatcherUnhandledException += (s, e) => { e.Handled = true; UnhandledException(e.Exception, false); };
             AppDomain.CurrentDomain.UnhandledException += (s, e) => { UnhandledException((e.ExceptionObject as Exception), true); };

@@ -10,6 +10,8 @@ using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Net;
+using System.Reflection;
+using System.Runtime.InteropServices;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
@@ -34,6 +36,7 @@ namespace VPet_Simulator.Windows
     {
         MainWindow mw;
         private bool AllowChange = false;
+        private bool suppressStartUpToggle;
         public winGameSetting(MainWindow mw)
         {
             this.mw = mw;
@@ -79,6 +82,7 @@ namespace VPet_Simulator.Windows
             StartUpSteamBox.IsChecked = mw.Set.StartUPBootSteam;
             if (RuntimeFeatures.StandaloneMode)
             {
+                ReconcileStandaloneStartupState();
                 StartUpSteamBox.Visibility = Visibility.Collapsed;
                 Grid.SetColumnSpan(StartUpBox, 2);
                 runBackupDescription.Text = "Coco Cat 会在保存时备份上一次存档，以便在存档丢失或损坏时还原。";
@@ -1038,6 +1042,12 @@ namespace VPet_Simulator.Windows
 
         public void GenStartUP()
         {
+            if (RuntimeFeatures.StandaloneMode)
+            {
+                ApplyStandaloneStartupState(mw.Set.StartUPBoot);
+                return;
+            }
+
             mw.Set["v"][(gbol)"newverstartup"] = true;
             var shortcutName = RuntimeFeatures.StandaloneMode ? "Coco_Cat.lnk" : "VPET_Simulator.lnk";
             var path = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.Startup), shortcutName);
@@ -1075,15 +1085,443 @@ namespace VPet_Simulator.Windows
                     File.Delete(path);
             }
         }
+
+        private void ApplyStandaloneStartupState(bool enable)
+        {
+            if (enable)
+                EnableStandaloneStartup();
+            else
+                DisableStandaloneStartup();
+        }
+
+        private void EnableStandaloneStartup()
+        {
+            var shortcutPath = GetStandaloneShortcutPath();
+            StandaloneDebugLogger.Log(
+                $"[StandaloneDebug] Startup shortcut toggle on begin\n" +
+                $"StandaloneMode: {RuntimeFeatures.StandaloneMode}\n" +
+                $"StartUPBoot: {mw.Set.StartUPBoot}\n" +
+                $"StartUPBootSteam: {mw.Set.StartUPBootSteam}\n" +
+                $"Shortcut path: {shortcutPath}");
+
+            try
+            {
+                var targetPath = ResolveStandaloneExecutablePath();
+                var workingDirectory = Path.GetDirectoryName(targetPath);
+                if (string.IsNullOrWhiteSpace(workingDirectory))
+                    throw new InvalidOperationException("The startup shortcut working directory is empty.");
+
+                workingDirectory = Path.GetFullPath(workingDirectory);
+                if (!Directory.Exists(workingDirectory))
+                    throw new DirectoryNotFoundException(
+                        $"The startup shortcut working directory does not exist: {workingDirectory}");
+
+                DeleteStandaloneShortcut(shortcutPath);
+                CreateStandaloneShortcut(shortcutPath, targetPath, workingDirectory);
+                ValidateStandaloneShortcutFile(shortcutPath);
+
+                mw.Set.StartUPBoot = true;
+                mw.SaveSettingsOnly();
+                SetStartUpBoxState(true);
+
+                StandaloneDebugLogger.Log(
+                    $"[StandaloneDebug] Startup shortcut toggle on success\n" +
+                    $"Shortcut path: {shortcutPath}\n" +
+                    $"Target path: {targetPath}\n" +
+                    $"Working directory: {workingDirectory}\n" +
+                    $"Arguments: \n" +
+                    $"Icon location: {targetPath},0");
+            }
+            catch (Exception e)
+            {
+                StandaloneDebugLogger.Log(
+                    $"[StandaloneDebug] Startup shortcut toggle on failed\n{e}\n" +
+                    $"[StandaloneDebug] Startup shortcut rollback begin");
+
+                var shortcutRollbackSucceeded = TryDeleteStandaloneShortcut(shortcutPath);
+                var actualStartupEnabled = GetStandaloneStartupShortcutActualState(shortcutPath);
+                StandaloneDebugLogger.Log(
+                    shortcutRollbackSucceeded
+                        ? "[StandaloneDebug] Startup enable rollback delete success"
+                        : "[StandaloneDebug] Startup enable rollback delete failed");
+
+                mw.Set.StartUPBoot = actualStartupEnabled;
+                var settingRollbackSucceeded = TrySaveStandaloneStartupSetting();
+                SetStartUpBoxState(actualStartupEnabled);
+
+                StandaloneDebugLogger.Log(
+                    $"[StandaloneDebug] Startup shortcut rollback end\n" +
+                    $"Shortcut rollback succeeded: {shortcutRollbackSucceeded}\n" +
+                    $"Setting rollback succeeded: {settingRollbackSucceeded}\n" +
+                    $"[StandaloneDebug] Startup enable actual state: {actualStartupEnabled}");
+
+                MessageBoxX.Show(
+                    actualStartupEnabled
+                        ? "开机启动配置未能完成回滚，启动快捷方式仍然存在，当前开机启动仍处于开启状态。请关闭程序后手动删除 Startup 目录中的 Coco_Cat.lnk。\n\n" + e.Message
+                        : "无法创建开机启动快捷方式。开机启动已关闭，请检查程序目录和 Startup 文件夹权限后重试。\n\n" + e.Message,
+                    "开机启动失败",
+                    MessageBoxIcon.Error);
+            }
+        }
+
+        private void DisableStandaloneStartup()
+        {
+            var shortcutPath = GetStandaloneShortcutPath();
+            StandaloneDebugLogger.Log(
+                $"[StandaloneDebug] Startup shortcut toggle off begin\n" +
+                $"StandaloneMode: {RuntimeFeatures.StandaloneMode}\n" +
+                $"StartUPBoot: {mw.Set.StartUPBoot}\n" +
+                $"StartUPBootSteam: {mw.Set.StartUPBootSteam}\n" +
+                $"Shortcut path: {shortcutPath}");
+
+            try
+            {
+                DeleteStandaloneShortcut(shortcutPath);
+            }
+            catch (Exception e)
+            {
+                var actualStartupEnabled = GetStandaloneStartupShortcutActualState(shortcutPath);
+                mw.Set.StartUPBoot = actualStartupEnabled;
+                var settingRollbackSucceeded = TrySaveStandaloneStartupSetting();
+                SetStartUpBoxState(actualStartupEnabled);
+                StandaloneDebugLogger.Log(
+                    $"[StandaloneDebug] Startup shortcut toggle off failed\n{e}\n" +
+                    $"Setting rollback succeeded: {settingRollbackSucceeded}\n" +
+                    $"[StandaloneDebug] Startup disable actual state: {actualStartupEnabled}");
+                MessageBoxX.Show(
+                    actualStartupEnabled
+                        ? "无法删除开机启动快捷方式。开机启动仍保持开启，请检查 Startup 文件夹权限后重试。\n\n" + e.Message
+                        : "删除开机启动快捷方式时发生异常，但当前快捷方式已不存在。请重新打开设置确认状态。\n\n" + e.Message,
+                    "关闭开机启动失败",
+                    MessageBoxIcon.Error);
+                return;
+            }
+
+            mw.Set.StartUPBoot = false;
+            try
+            {
+                mw.SaveSettingsOnly();
+                SetStartUpBoxState(false);
+                StandaloneDebugLogger.Log(
+                    $"[StandaloneDebug] Startup shortcut toggle off success\n" +
+                    $"Shortcut path: {shortcutPath}\n" +
+                    $"Shortcut exists: {File.Exists(shortcutPath)}");
+            }
+            catch (Exception e)
+            {
+                StandaloneDebugLogger.Log(
+                    $"[StandaloneDebug] Startup disable setting save failed\n{e}\n" +
+                    "[StandaloneDebug] Startup disable restore shortcut begin");
+
+                try
+                {
+                    var targetPath = ResolveStandaloneExecutablePath();
+                    var workingDirectory = Path.GetDirectoryName(targetPath);
+                    if (string.IsNullOrWhiteSpace(workingDirectory))
+                        throw new InvalidOperationException("The startup shortcut working directory is empty.");
+
+                    workingDirectory = Path.GetFullPath(workingDirectory);
+                    if (!Directory.Exists(workingDirectory))
+                        throw new DirectoryNotFoundException(
+                            $"The startup shortcut working directory does not exist: {workingDirectory}");
+
+                    CreateStandaloneShortcut(shortcutPath, targetPath, workingDirectory);
+                    ValidateStandaloneShortcutFile(shortcutPath);
+
+                    var actualStartupEnabled = GetStandaloneStartupShortcutActualState(shortcutPath);
+                    mw.Set.StartUPBoot = actualStartupEnabled;
+                    var settingRollbackSucceeded = TrySaveStandaloneStartupSetting();
+                    SetStartUpBoxState(actualStartupEnabled);
+
+                    StandaloneDebugLogger.Log(
+                        $"[StandaloneDebug] Startup disable restore shortcut success\n" +
+                        $"Setting rollback succeeded: {settingRollbackSucceeded}\n" +
+                        $"[StandaloneDebug] Startup disable actual state: {actualStartupEnabled}");
+                    MessageBoxX.Show(
+                        "本次关闭开机启动未能完成，已恢复启动快捷方式，当前开机启动仍处于开启状态。\n\n"
+                        + e.Message,
+                        "开机启动设置保存失败",
+                        MessageBoxIcon.Error);
+                }
+                catch (Exception restoreException)
+                {
+                    var actualStartupEnabled = GetStandaloneStartupShortcutActualState(shortcutPath);
+                    mw.Set.StartUPBoot = actualStartupEnabled;
+                    var settingRollbackSucceeded = TrySaveStandaloneStartupSetting();
+                    SetStartUpBoxState(actualStartupEnabled);
+
+                    StandaloneDebugLogger.Log(
+                        $"[StandaloneDebug] Startup disable restore shortcut failed\n{restoreException}\n" +
+                        $"Setting rollback succeeded: {settingRollbackSucceeded}\n" +
+                        $"[StandaloneDebug] Startup disable actual state: {actualStartupEnabled}");
+                    MessageBoxX.Show(
+                        actualStartupEnabled
+                            ? "开机启动状态恢复失败，但启动快捷方式仍然存在，当前开机启动仍处于开启状态。\n\n" + restoreException.Message
+                            : "开机启动快捷方式已经删除，实际开机启动已关闭，但设置文件写入失败。下次打开设置时会按实际快捷方式状态同步。\n\n" + restoreException.Message,
+                        "开机启动设置保存失败",
+                        MessageBoxIcon.Error);
+                }
+            }
+        }
+
+        private static string GetStandaloneShortcutPath()
+        {
+            return Path.GetFullPath(Path.Combine(
+                Environment.GetFolderPath(Environment.SpecialFolder.Startup),
+                "Coco_Cat.lnk"));
+        }
+
+        private static string ResolveStandaloneExecutablePath()
+        {
+            var processPath = Environment.ProcessPath;
+            string mainModulePath = null;
+            try
+            {
+                mainModulePath = Process.GetCurrentProcess().MainModule?.FileName;
+            }
+            catch (Exception e)
+            {
+                StandaloneDebugLogger.Log(
+                    $"[StandaloneDebug] Startup shortcut Process.MainModule lookup failed\n{e}");
+            }
+
+            var assemblyLocation = Assembly.GetEntryAssembly()?.Location;
+            if (string.IsNullOrWhiteSpace(assemblyLocation))
+                assemblyLocation = Assembly.GetExecutingAssembly().Location;
+
+            var assemblyDirectory = string.IsNullOrWhiteSpace(assemblyLocation)
+                ? null
+                : Path.GetDirectoryName(Path.GetFullPath(assemblyLocation));
+            var assemblyExecutablePath = string.IsNullOrWhiteSpace(assemblyLocation)
+                ? null
+                : Path.ChangeExtension(Path.GetFullPath(assemblyLocation), ".exe");
+
+            StandaloneDebugLogger.Log(
+                $"[StandaloneDebug] Startup shortcut executable path candidates\n" +
+                $"Environment.ProcessPath: {processPath}\n" +
+                $"Process MainModule path: {mainModulePath}\n" +
+                $"Assembly location fallback: {assemblyLocation}\n" +
+                $"Assembly EXE fallback: {assemblyExecutablePath}");
+
+            foreach (var candidate in new[] { processPath, mainModulePath, assemblyExecutablePath })
+            {
+                if (!TryValidateStandaloneExecutablePath(candidate, assemblyDirectory, out var targetPath))
+                    continue;
+
+                StandaloneDebugLogger.Log(
+                    $"[StandaloneDebug] Startup shortcut executable path validated\n" +
+                    $"Target path: {targetPath}\n" +
+                    $"Target exists: {File.Exists(targetPath)}");
+                return targetPath;
+            }
+
+            throw new FileNotFoundException(
+                "Unable to locate the current Coco Cat Windows executable.");
+        }
+
+        private static bool TryValidateStandaloneExecutablePath(
+            string candidate,
+            string assemblyDirectory,
+            out string targetPath)
+        {
+            targetPath = null;
+            if (string.IsNullOrWhiteSpace(candidate))
+                return false;
+
+            string fullPath;
+            try
+            {
+                fullPath = Path.GetFullPath(candidate);
+            }
+            catch
+            {
+                return false;
+            }
+
+            if (!Path.IsPathFullyQualified(fullPath) ||
+                !string.Equals(Path.GetExtension(fullPath), ".exe", StringComparison.OrdinalIgnoreCase) ||
+                string.Equals(Path.GetFileName(fullPath), "VPet.Solution.exe", StringComparison.OrdinalIgnoreCase) ||
+                !File.Exists(fullPath))
+                return false;
+
+            if (!string.IsNullOrWhiteSpace(assemblyDirectory) &&
+                !string.Equals(
+                    Path.GetDirectoryName(fullPath),
+                    assemblyDirectory,
+                    StringComparison.OrdinalIgnoreCase))
+                return false;
+
+            targetPath = fullPath;
+            return true;
+        }
+
+        private static void DeleteStandaloneShortcut(string shortcutPath)
+        {
+            var oldFileExists = File.Exists(shortcutPath);
+            StandaloneDebugLogger.Log(
+                $"[StandaloneDebug] Startup shortcut old file exists: {oldFileExists}\n" +
+                $"Shortcut path: {shortcutPath}");
+
+            if (!oldFileExists)
+                return;
+
+            StandaloneDebugLogger.Log("[StandaloneDebug] Startup shortcut old file delete begin");
+            File.Delete(shortcutPath);
+            if (File.Exists(shortcutPath))
+                throw new IOException($"The old startup shortcut could not be deleted: {shortcutPath}");
+            StandaloneDebugLogger.Log("[StandaloneDebug] Startup shortcut old file delete end");
+        }
+
+        private static bool TryDeleteStandaloneShortcut(string shortcutPath)
+        {
+            try
+            {
+                DeleteStandaloneShortcut(shortcutPath);
+                return !File.Exists(shortcutPath);
+            }
+            catch (Exception e)
+            {
+                StandaloneDebugLogger.Log(
+                    $"[StandaloneDebug] Startup shortcut rollback delete failed\n{e}");
+                return false;
+            }
+        }
+
+        private static bool GetStandaloneStartupShortcutActualState(string shortcutPath)
+        {
+            try
+            {
+                var shortcutFile = new FileInfo(shortcutPath);
+                return shortcutFile.Exists && shortcutFile.Length > 0;
+            }
+            catch (Exception e)
+            {
+                StandaloneDebugLogger.Log(
+                    $"[StandaloneDebug] Startup shortcut actual state check failed\n{e}");
+                return File.Exists(shortcutPath);
+            }
+        }
+
+        private void ReconcileStandaloneStartupState()
+        {
+            var shortcutPath = GetStandaloneShortcutPath();
+            StandaloneDebugLogger.Log(
+                $"[StandaloneDebug] Startup state reconciliation begin\n" +
+                $"Shortcut path: {shortcutPath}");
+
+            var actualStartupEnabled = GetStandaloneStartupShortcutActualState(shortcutPath);
+            if (mw.Set.StartUPBoot == actualStartupEnabled)
+            {
+                SetStartUpBoxState(actualStartupEnabled);
+                return;
+            }
+
+            StandaloneDebugLogger.Log(
+                $"[StandaloneDebug] Startup state reconciliation mismatch\n" +
+                $"Setting state: {mw.Set.StartUPBoot}\n" +
+                $"Actual state: {actualStartupEnabled}");
+
+            mw.Set.StartUPBoot = actualStartupEnabled;
+            SetStartUpBoxState(actualStartupEnabled);
+            try
+            {
+                mw.SaveSettingsOnly();
+                StandaloneDebugLogger.Log("[StandaloneDebug] Startup state reconciliation success");
+            }
+            catch (Exception e)
+            {
+                StandaloneDebugLogger.Log(
+                    $"[StandaloneDebug] Startup state reconciliation save failed\n{e}");
+            }
+        }
+
+        private static void CreateStandaloneShortcut(
+            string shortcutPath,
+            string targetPath,
+            string workingDirectory)
+        {
+            StandaloneDebugLogger.Log(
+                $"[StandaloneDebug] Startup shortcut create begin\n" +
+                $"Shortcut path: {shortcutPath}\n" +
+                $"Target path: {targetPath}\n" +
+                $"Target exists: {File.Exists(targetPath)}\n" +
+                $"Working directory: {workingDirectory}\n" +
+                $"Working directory exists: {Directory.Exists(workingDirectory)}\n" +
+                $"Arguments: \n" +
+                $"Icon location: {targetPath},0");
+
+            IShellLink link = null;
+            try
+            {
+                link = (IShellLink)new ShellLink();
+                link.SetPath(targetPath);
+                link.SetWorkingDirectory(workingDirectory);
+                link.SetArguments(string.Empty);
+                link.SetDescription("Coco Cat");
+                link.SetIconLocation(targetPath, 0);
+
+                StandaloneDebugLogger.Log("[StandaloneDebug] Startup shortcut save begin");
+                ((IPersistFile)link).Save(shortcutPath, false);
+                StandaloneDebugLogger.Log("[StandaloneDebug] Startup shortcut save end");
+            }
+            finally
+            {
+                if (link != null && Marshal.IsComObject(link))
+                    Marshal.FinalReleaseComObject(link);
+            }
+        }
+
+        private static void ValidateStandaloneShortcutFile(string shortcutPath)
+        {
+            var shortcutFile = new FileInfo(shortcutPath);
+            if (!GetStandaloneStartupShortcutActualState(shortcutPath))
+                throw new IOException($"The startup shortcut was not created correctly: {shortcutPath}");
+
+            StandaloneDebugLogger.Log(
+                $"[StandaloneDebug] Startup shortcut validation success\n" +
+                $"Shortcut path: {shortcutPath}\n" +
+                $"Shortcut exists: {shortcutFile.Exists}\n" +
+                $"Shortcut size: {shortcutFile.Length}\n" +
+                $"Shortcut modified: {shortcutFile.LastWriteTimeUtc:O}");
+        }
+
+        private bool TrySaveStandaloneStartupSetting()
+        {
+            try
+            {
+                mw.SaveSettingsOnly();
+                return true;
+            }
+            catch (Exception e)
+            {
+                StandaloneDebugLogger.Log(
+                    $"[StandaloneDebug] Startup setting rollback save failed\n{e}");
+                return false;
+            }
+        }
+
+        private void SetStartUpBoxState(bool isChecked)
+        {
+            suppressStartUpToggle = true;
+            try
+            {
+                StartUpBox.IsChecked = isChecked;
+            }
+            finally
+            {
+                suppressStartUpToggle = false;
+            }
+        }
+
         private void StartUpBox_Checked(object sender, RoutedEventArgs e)
         {
-            if (!AllowChange)
+            if (!AllowChange || suppressStartUpToggle)
                 return;
             if (StartUpBox.IsChecked == true)
                 if (MessageBoxX.Show("该游戏随着开机启动该程序\r如需卸载游戏\r请关闭该选项".Translate() + "\n------\n" + "我已确认,并在卸载游戏前会关闭该功能".Translate(), "开机启动重要消息".Translate(),
                     MessageBoxButton.YesNo, MessageBoxIcon.Warning) != MessageBoxResult.Yes)
                 {
-                    StartUpBox.IsChecked = false;
+                    SetStartUpBoxState(false);
                     return;
                 }
             //else
@@ -1093,8 +1531,15 @@ namespace VPet_Simulator.Windows
             //        , "关于卸载不掉的问题是因为开启了开机启动".Translate(), MessageBoxIcon.Info);
             //}
 
-            mw.Set.StartUPBoot = StartUpBox.IsChecked == true;
-            GenStartUP();
+            if (RuntimeFeatures.StandaloneMode)
+            {
+                ApplyStandaloneStartupState(StartUpBox.IsChecked == true);
+            }
+            else
+            {
+                mw.Set.StartUPBoot = StartUpBox.IsChecked == true;
+                GenStartUP();
+            }
         }
 
         private void StartUpSteamBox_Checked(object sender, RoutedEventArgs e)

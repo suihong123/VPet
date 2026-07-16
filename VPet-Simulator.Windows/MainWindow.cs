@@ -43,6 +43,7 @@ namespace VPet_Simulator.Windows
 {
     public partial class MainWindow : IMainWindow
     {
+        private readonly object settingFileIoLock = new();
 
         /// <summary>
         /// 加载主题
@@ -219,6 +220,84 @@ namespace VPet_Simulator.Windows
         /// <summary>
         /// 保存设置
         /// </summary>
+        internal void SaveSettingsOnly()
+        {
+            if (Set == null)
+                throw new InvalidOperationException("Settings are not initialized.");
+
+            var settingPath = Path.GetFullPath(Path.Combine(
+                ExtensionValue.BaseDirectory,
+                $"Setting{PrefixSave}.lps"));
+            var temporaryPath = settingPath + $".{Environment.ProcessId}.{Guid.NewGuid():N}.tmp";
+
+            WriteSettingsFileSynchronized(() =>
+            {
+                StandaloneDebugLogger.Log(
+                    $"[StandaloneDebug] Startup setting save begin\n" +
+                    $"Setting path: {settingPath}");
+
+                try
+                {
+                    File.WriteAllText(temporaryPath, Set.ToString());
+                    var temporaryFile = new FileInfo(temporaryPath);
+                    if (!temporaryFile.Exists || temporaryFile.Length == 0)
+                        throw new IOException("The temporary settings file was not written correctly.");
+
+                    File.Move(temporaryPath, settingPath, true);
+
+                    var settingFile = new FileInfo(settingPath);
+                    if (!settingFile.Exists || settingFile.Length == 0)
+                        throw new IOException("The settings file was not written correctly.");
+
+                    StandaloneDebugLogger.Log(
+                        $"[StandaloneDebug] Startup setting save end\n" +
+                        $"Setting path: {settingPath}\n" +
+                        $"Setting size: {settingFile.Length}");
+                }
+                catch (Exception e)
+                {
+                    try
+                    {
+                        if (File.Exists(temporaryPath))
+                            File.Delete(temporaryPath);
+                    }
+                    catch (Exception cleanupException)
+                    {
+                        StandaloneDebugLogger.Log(
+                            $"[StandaloneDebug] Startup setting temporary file cleanup failed\n{cleanupException}");
+                    }
+
+                    StandaloneDebugLogger.Log(
+                        $"[StandaloneDebug] Startup setting save failed\n{e}");
+                    throw;
+                }
+            });
+        }
+
+        private void WriteSettingsFileSynchronized(Action writeSettingsFile)
+        {
+            StandaloneDebugLogger.Log("[StandaloneDebug] Settings file lock wait begin");
+            lock (settingFileIoLock)
+            {
+                StandaloneDebugLogger.Log("[StandaloneDebug] Settings file lock acquired");
+                try
+                {
+                    StandaloneDebugLogger.Log("[StandaloneDebug] Settings file write begin");
+                    writeSettingsFile();
+                    StandaloneDebugLogger.Log("[StandaloneDebug] Settings file write end");
+                }
+                catch (Exception e)
+                {
+                    StandaloneDebugLogger.Log(
+                        $"[StandaloneDebug] Settings file write failed\n{e}");
+                    throw;
+                }
+            }
+        }
+
+        /// <summary>
+        /// 保存设置
+        /// </summary>
         public void Save()
         {
             //保存日程表
@@ -256,21 +335,24 @@ namespace VPet_Simulator.Windows
                     //timecount = DateTime.Now;
                 }
                 Set.StartRecordLastPoint = new Point(Dispatcher.Invoke(() => Left), Dispatcher.Invoke(() => Top));
-                if (PrefixSave == "" && File.Exists(ExtensionValue.BaseDirectory + @"\Setting.lps"))
-                {//对于主设置的备份
-                    if (new FileInfo(ExtensionValue.BaseDirectory + @"\Setting.lps").Length < 10)
-                    {//文件大小小于10字节,可能是损坏的文件
-                        File.Delete(ExtensionValue.BaseDirectory + @"\Setting.lps");
-                    }
-                    else
-                    {
-                        if (File.Exists(ExtensionValue.BaseDirectory + @"\Setting.bkp"))
-                            File.Delete(ExtensionValue.BaseDirectory + @"\Setting.bkp");
-                        File.Move(ExtensionValue.BaseDirectory + @"\Setting.lps", ExtensionValue.BaseDirectory + @"\Setting.bkp");
-                    }
+                WriteSettingsFileSynchronized(() =>
+                {
+                    if (PrefixSave == "" && File.Exists(ExtensionValue.BaseDirectory + @"\Setting.lps"))
+                    {//对于主设置的备份
+                        if (new FileInfo(ExtensionValue.BaseDirectory + @"\Setting.lps").Length < 10)
+                        {//文件大小小于10字节,可能是损坏的文件
+                            File.Delete(ExtensionValue.BaseDirectory + @"\Setting.lps");
+                        }
+                        else
+                        {
+                            if (File.Exists(ExtensionValue.BaseDirectory + @"\Setting.bkp"))
+                                File.Delete(ExtensionValue.BaseDirectory + @"\Setting.bkp");
+                            File.Move(ExtensionValue.BaseDirectory + @"\Setting.lps", ExtensionValue.BaseDirectory + @"\Setting.bkp");
+                        }
 
-                }
-                File.WriteAllText(ExtensionValue.BaseDirectory + @$"\Setting{PrefixSave}.lps", Set.ToString());
+                    }
+                    File.WriteAllText(ExtensionValue.BaseDirectory + @$"\Setting{PrefixSave}.lps", Set.ToString());
+                });
 
                 if (!Directory.Exists(ExtensionValue.BaseDirectory + @"\Saves"))
                     Directory.CreateDirectory(ExtensionValue.BaseDirectory + @"\Saves");

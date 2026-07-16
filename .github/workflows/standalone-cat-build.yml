@@ -387,6 +387,322 @@ jobs:
           path: standalone-cat-lean-manifest.txt
           retention-days: 7
 
+      - name: Prepare x64-only lean v2 internal Windows test package
+        if: github.event_name == 'workflow_dispatch' && inputs.upload_test_package == true && steps.build-windows.outputs.exit_code == '0'
+        shell: pwsh
+        run: |
+          $fullPackageRoot = "standalone-cat-windows-x64-test"
+          $leanV1Root = "artifacts/standalone-cat-windows-x64-lean-test"
+          $leanV2Root = "artifacts/standalone-cat-windows-x64-lean-v2-test"
+          $manifestPath = "standalone-cat-lean-v2-manifest.txt"
+
+          function Get-PackageStats([string] $path) {
+            $files = @(Get-ChildItem $path -Recurse -File -Force)
+            $bytes = [long](($files | Measure-Object -Property Length -Sum).Sum)
+            return [PSCustomObject]@{
+              FileCount = $files.Count
+              Bytes = $bytes
+            }
+          }
+
+          function Get-PackageInventory([string] $path) {
+            $rootPath = (Resolve-Path $path).Path
+            $inventory = @{}
+            foreach ($file in Get-ChildItem $path -Recurse -File -Force) {
+              $relativePath = $file.FullName.Substring($rootPath.Length + 1).Replace('\', '/')
+              $inventory[$relativePath] = [PSCustomObject]@{
+                Length = [long]$file.Length
+                Sha256 = (Get-FileHash $file.FullName -Algorithm SHA256).Hash
+              }
+            }
+            return $inventory
+          }
+
+          if (-not (Test-Path $fullPackageRoot -PathType Container)) {
+            Write-Error "Full test package staging directory is missing: $fullPackageRoot"
+            exit 1
+          }
+          if (-not (Test-Path $leanV1Root -PathType Container)) {
+            Write-Error "Lean v1 staging directory is missing: $leanV1Root"
+            exit 1
+          }
+
+          $fullRequiredPaths = @(
+            "mod/0000_core/pet/vup",
+            "mod/0000_core/file",
+            "runtimes/osx/native/libSkiaSharp.dylib",
+            "runtimes/win-arm64/native/libSkiaSharp.dll",
+            "runtimes/win-x86/native/libSkiaSharp.dll",
+            "runtimes/win-x64/native/libSkiaSharp.dll"
+          )
+          foreach ($relativePath in $fullRequiredPaths) {
+            if (-not (Test-Path (Join-Path $fullPackageRoot $relativePath))) {
+              Write-Error "Full package regression check failed; missing: $relativePath"
+              exit 1
+            }
+          }
+
+          $leanV1RequiredFiles = @(
+            "runtimes/osx/native/libSkiaSharp.dylib",
+            "runtimes/win-arm64/native/libSkiaSharp.dll",
+            "runtimes/win-x86/native/libSkiaSharp.dll",
+            "runtimes/win-x64/native/libSkiaSharp.dll",
+            "mod/0000_core/pet/cat.lps",
+            "LICENSE"
+          )
+          foreach ($relativePath in $leanV1RequiredFiles) {
+            if (-not (Test-Path (Join-Path $leanV1Root $relativePath) -PathType Leaf)) {
+              Write-Error "Lean v1 regression check failed; missing: $relativePath"
+              exit 1
+            }
+          }
+          foreach ($relativePath in @("mod/0000_core/pet/vup", "mod/0000_core/file")) {
+            if (Test-Path (Join-Path $leanV1Root $relativePath)) {
+              Write-Error "Lean v1 regression check failed; excluded path exists: $relativePath"
+              exit 1
+            }
+          }
+
+          if (Test-Path $leanV2Root) {
+            Remove-Item $leanV2Root -Recurse -Force
+          }
+          New-Item -ItemType Directory -Path $leanV2Root -Force | Out-Null
+          Copy-Item -Path (Join-Path $leanV1Root "*") -Destination $leanV2Root -Recurse -Force
+
+          $excludedRuntimeDirectories = @(
+            "runtimes/osx",
+            "runtimes/win-arm64",
+            "runtimes/win-x86"
+          )
+          foreach ($relativePath in $excludedRuntimeDirectories) {
+            $targetPath = Join-Path $leanV2Root $relativePath
+            if (-not (Test-Path $targetPath -PathType Container)) {
+              Write-Error "Lean v2 source directory is missing before exclusion: $relativePath"
+              exit 1
+            }
+            Remove-Item $targetPath -Recurse -Force
+          }
+
+          $requiredFiles = @(
+            "VPet-Simulator.Windows.exe",
+            "VPet-Simulator.Windows.dll",
+            "VPet-Simulator.Core.dll",
+            "VPet-Simulator.Windows.Interface.dll",
+            "VPet-Simulator.Windows.deps.json",
+            "VPet-Simulator.Windows.runtimeconfig.json",
+            "SkiaSharp.dll",
+            "runtimes/win-x64/native/libSkiaSharp.dll",
+            "mod/0000_core/info.lps",
+            "mod/0000_core/pet/cat.lps",
+            "LICENSE"
+          )
+          foreach ($relativePath in $requiredFiles) {
+            if (-not (Test-Path (Join-Path $leanV2Root $relativePath) -PathType Leaf)) {
+              Write-Error "Lean v2 package is missing required file: $relativePath"
+              exit 1
+            }
+          }
+
+          $catRoot = Join-Path $leanV2Root "mod/0000_core/pet/cat"
+          if (-not (Test-Path $catRoot -PathType Container)) {
+            Write-Error "Lean v2 package is missing the cat resource directory."
+            exit 1
+          }
+          $catPngFiles = @(Get-ChildItem $catRoot -Recurse -File -Filter *.png)
+          if ($catPngFiles.Count -ne 12) {
+            Write-Error "Expected 12 cat PNG files in lean v2 package, found $($catPngFiles.Count)."
+            exit 1
+          }
+
+          $excludedPaths = @(
+            "runtimes/osx",
+            "runtimes/osx/native/libSkiaSharp.dylib",
+            "runtimes/win-arm64",
+            "runtimes/win-arm64/native/libSkiaSharp.dll",
+            "runtimes/win-x86",
+            "runtimes/win-x86/native/libSkiaSharp.dll",
+            "mod/0000_core/pet/vup",
+            "mod/0000_core/file"
+          )
+          foreach ($relativePath in $excludedPaths) {
+            if (Test-Path (Join-Path $leanV2Root $relativePath)) {
+              Write-Error "Lean v2 package still contains excluded path: $relativePath"
+              exit 1
+            }
+          }
+          $galleryArchives = @(Get-ChildItem (Join-Path $leanV2Root "mod/0000_core") -Recurse -File -Filter *.zlps |
+            Where-Object { $_.FullName -match '[\\/]file[\\/]' })
+          if ($galleryArchives.Count -ne 0) {
+            Write-Error "Lean v2 package still contains gallery .zlps archives."
+            exit 1
+          }
+
+          $fullStats = Get-PackageStats $fullPackageRoot
+          $leanV1Stats = Get-PackageStats $leanV1Root
+          $leanV2Stats = Get-PackageStats $leanV2Root
+          $reducedFiles = $leanV1Stats.FileCount - $leanV2Stats.FileCount
+          $reducedBytes = $leanV1Stats.Bytes - $leanV2Stats.Bytes
+          $reducedPercent = if ($leanV1Stats.Bytes -eq 0) { 0 } else { ($reducedBytes / $leanV1Stats.Bytes) * 100 }
+
+          if ($leanV2Stats.Bytes -ge $leanV1Stats.Bytes) {
+            Write-Error "Lean v2 must be smaller than lean v1."
+            exit 1
+          }
+          if ($reducedBytes -le 30000000 -or $reducedBytes -ge 33000000) {
+            Write-Error "Lean v2 reduction is outside the expected range: $reducedBytes bytes."
+            exit 1
+          }
+
+          $leanV1Inventory = Get-PackageInventory $leanV1Root
+          $leanV2Inventory = Get-PackageInventory $leanV2Root
+          $allowedRemovedPrefixes = @("runtimes/osx/", "runtimes/win-arm64/", "runtimes/win-x86/")
+          $removedFiles = New-Object System.Collections.Generic.List[string]
+          $unexpectedDifferences = New-Object System.Collections.Generic.List[string]
+
+          foreach ($relativePath in $leanV1Inventory.Keys) {
+            if (-not $leanV2Inventory.ContainsKey($relativePath)) {
+              $isAllowedRemoval = @($allowedRemovedPrefixes | Where-Object {
+                $relativePath.StartsWith($_, [StringComparison]::OrdinalIgnoreCase)
+              }).Count -gt 0
+              if ($isAllowedRemoval) {
+                $removedFiles.Add($relativePath)
+              }
+              else {
+                $unexpectedDifferences.Add("removed: $relativePath")
+              }
+              continue
+            }
+
+            $v1File = $leanV1Inventory[$relativePath]
+            $v2File = $leanV2Inventory[$relativePath]
+            if ($v1File.Length -ne $v2File.Length -or $v1File.Sha256 -ne $v2File.Sha256) {
+              $unexpectedDifferences.Add("modified: $relativePath")
+            }
+          }
+          foreach ($relativePath in $leanV2Inventory.Keys) {
+            if (-not $leanV1Inventory.ContainsKey($relativePath)) {
+              $unexpectedDifferences.Add("added: $relativePath")
+            }
+          }
+
+          if ($removedFiles.Count -eq 0) {
+            Write-Error "Lean v2 did not remove any files."
+            exit 1
+          }
+          if ($unexpectedDifferences.Count -ne 0) {
+            $unexpectedDifferences | ForEach-Object { Write-Error $_ }
+            exit 1
+          }
+
+          $catBytes = [long](($catPngFiles | Measure-Object -Property Length -Sum).Sum)
+          $x64SkiaPath = Join-Path $leanV2Root "runtimes/win-x64/native/libSkiaSharp.dll"
+          $x64SkiaSize = (Get-Item $x64SkiaPath).Length
+          $largestFiles = @(Get-ChildItem $leanV2Root -Recurse -File -Force |
+            Sort-Object Length -Descending |
+            Select-Object -First 30)
+          $topLevelStats = @(Get-ChildItem $leanV2Root -Force | ForEach-Object {
+            if ($_.PSIsContainer) {
+              $files = @(Get-ChildItem $_.FullName -Recurse -File -Force)
+              $bytes = [long](($files | Measure-Object -Property Length -Sum).Sum)
+              [PSCustomObject]@{ Name = $_.Name; FileCount = $files.Count; Bytes = $bytes }
+            }
+            else {
+              [PSCustomObject]@{ Name = $_.Name; FileCount = 1; Bytes = [long]$_.Length }
+            }
+          } | Sort-Object Bytes -Descending)
+
+          @(
+            "commit_sha=$env:GITHUB_SHA",
+            "build_time_utc=$([DateTime]::UtcNow.ToString('o'))",
+            "full_file_count=$($fullStats.FileCount)",
+            "full_total_bytes=$($fullStats.Bytes)",
+            "lean_v1_file_count=$($leanV1Stats.FileCount)",
+            "lean_v1_total_bytes=$($leanV1Stats.Bytes)",
+            "lean_v2_file_count=$($leanV2Stats.FileCount)",
+            "lean_v2_total_bytes=$($leanV2Stats.Bytes)",
+            "reduced_file_count=$reducedFiles",
+            "reduced_bytes=$reducedBytes",
+            "reduced_percent=$($reducedPercent.ToString('F2'))",
+            "excluded=runtimes/osx",
+            "excluded=runtimes/win-arm64",
+            "excluded=runtimes/win-x86",
+            "win_x64_skia_path=runtimes/win-x64/native/libSkiaSharp.dll",
+            "win_x64_skia_bytes=$x64SkiaSize",
+            "cat_png_count=$($catPngFiles.Count)",
+            "cat_png_total_bytes=$catBytes",
+            "license_exists=True",
+            "full_package_regression_check=Passed",
+            "lean_v1_regression_check=Passed",
+            "lean_v2_required_files_check=Passed",
+            "lean_v2_excluded_paths_check=Passed",
+            "single_variable_sha256_check=Passed",
+            "size_sanity_check=Passed",
+            "",
+            "largest_30_files:"
+          ) | Set-Content $manifestPath
+
+          $leanV2RootPath = (Resolve-Path $leanV2Root).Path
+          foreach ($file in $largestFiles) {
+            $relativePath = $file.FullName.Substring($leanV2RootPath.Length + 1).Replace('\', '/')
+            "$relativePath`t$($file.Length)" | Add-Content $manifestPath
+          }
+
+          "" | Add-Content $manifestPath
+          "top_level_stats:" | Add-Content $manifestPath
+          foreach ($entry in $topLevelStats) {
+            "$($entry.Name)`t$($entry.FileCount)`t$($entry.Bytes)" | Add-Content $manifestPath
+          }
+
+          "" | Add-Content $manifestPath
+          "lean_v1_to_v2_removed_files:" | Add-Content $manifestPath
+          foreach ($relativePath in ($removedFiles | Sort-Object)) {
+            "$relativePath`t$($leanV1Inventory[$relativePath].Length)`t$($leanV1Inventory[$relativePath].Sha256)" | Add-Content $manifestPath
+          }
+
+          @"
+          ## Standalone cat lean v2 x64-only test package
+
+          | Metric | Value |
+          | --- | ---: |
+          | Commit | $env:GITHUB_SHA |
+          | Full package files | $($fullStats.FileCount) |
+          | Full package bytes | $($fullStats.Bytes) |
+          | Lean v1 files | $($leanV1Stats.FileCount) |
+          | Lean v1 bytes | $($leanV1Stats.Bytes) |
+          | Lean v2 files | $($leanV2Stats.FileCount) |
+          | Lean v2 bytes | $($leanV2Stats.Bytes) |
+          | Files removed from v1 | $reducedFiles |
+          | Bytes removed from v1 | $reducedBytes |
+          | Reduction from v1 | $($reducedPercent.ToString('F2'))% |
+          | win-x64 libSkiaSharp bytes | $x64SkiaSize |
+          | Cat PNG files | $($catPngFiles.Count) |
+          | Cat PNG bytes | $catBytes |
+          | Single-variable SHA-256 check | Passed |
+
+          Lean v2 additionally excludes only:
+          - runtimes/osx
+          - runtimes/win-arm64
+          - runtimes/win-x86
+          "@ | Add-Content $env:GITHUB_STEP_SUMMARY
+
+          Get-Content $manifestPath
+
+      - name: Upload x64-only lean v2 internal Windows test package
+        if: github.event_name == 'workflow_dispatch' && inputs.upload_test_package == true && steps.build-windows.outputs.exit_code == '0'
+        uses: actions/upload-artifact@v4
+        with:
+          name: standalone-cat-windows-x64-lean-v2-test
+          path: artifacts/standalone-cat-windows-x64-lean-v2-test
+          retention-days: 3
+
+      - name: Upload lean v2 package manifest
+        if: github.event_name == 'workflow_dispatch' && inputs.upload_test_package == true && steps.build-windows.outputs.exit_code == '0'
+        uses: actions/upload-artifact@v4
+        with:
+          name: standalone-cat-lean-v2-manifest
+          path: standalone-cat-lean-v2-manifest.txt
+          retention-days: 7
+
       - name: Fail if Windows build failed
         if: always()
         shell: pwsh

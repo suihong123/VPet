@@ -22,7 +22,7 @@
 		<UseWPF>true</UseWPF>
 		<UseWindowsForms>true</UseWindowsForms>
 		<ImportWindowsDesktopTargets>true</ImportWindowsDesktopTargets>
-		<ApplicationIcon>vpeticon.ico</ApplicationIcon>
+		<ApplicationIcon>Res\Brand\coco-cat.ico</ApplicationIcon>
 
 		<Platforms>x86;x64</Platforms>
 
@@ -151,7 +151,7 @@
 		<Resource Include="Res\Inventory.png" />
 		<Resource Include="Res\player.png" />
 		<Resource Include="Res\remixicon.ttf" />
-		<Resource Include="vpeticon.ico">
+		<Resource Include="Res\Brand\coco-cat.ico">
 		  <CopyToOutputDirectory>Always</CopyToOutputDirectory>
 		</Resource>
 	</ItemGroup>

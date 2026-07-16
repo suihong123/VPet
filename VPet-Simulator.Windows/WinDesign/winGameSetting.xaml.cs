@@ -1046,16 +1046,19 @@ namespace VPet_Simulator.Windows
                 if (File.Exists(path))
                     File.Delete(path);
                 var link = (IShellLink)new ShellLink();
+                var executablePath = System.Reflection.Assembly.GetExecutingAssembly().Location.Replace(".dll", ".exe");
                 if (mw.Set.StartUPBootSteam)
                 {
                     link.SetPath(ExtensionValue.BaseDirectory + @"\VPet.Solution.exe");
                     link.SetArguments("launchsteam");
                 }
                 else
-                    link.SetPath(System.Reflection.Assembly.GetExecutingAssembly().Location.Replace(".dll", ".exe"));
+                    link.SetPath(executablePath);
 
                 link.SetDescription(RuntimeFeatures.StandaloneMode ? "Coco Cat" : "VPet Simulator");
-                link.SetIconLocation(ExtensionValue.BaseDirectory + @"vpeticon.ico", 0);
+                link.SetIconLocation(RuntimeFeatures.StandaloneMode
+                    ? executablePath
+                    : ExtensionValue.BaseDirectory + @"vpeticon.ico", 0);
                 try
                 {
                     var file = (IPersistFile)link;

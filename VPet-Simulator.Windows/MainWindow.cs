@@ -2419,7 +2419,9 @@ namespace VPet_Simulator.Windows
                   };
                   StandaloneDebugLogger.Log("[StandaloneDebug] StartupPostCache 18 End - Initialize tray icon and menu");
                   StandaloneDebugLogger.Log("[StandaloneDebug] StartupPostCache 19 Begin - Register runtime handlers and startup notices");
-                  if (Set.StartUPBoot == true && !Set["v"][(gbol)"newverstartup"])
+                  if (!RuntimeFeatures.StandaloneMode &&
+                      Set.StartUPBoot == true &&
+                      !Set["v"][(gbol)"newverstartup"])
                   {//更新到最新版开机启动方式
                       try
                       {

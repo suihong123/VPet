@@ -78,7 +78,7 @@ namespace VPet_Simulator.Windows
             SwitchHideFromTaskControl.IsChecked = mw.Set.HideFromTaskControl;
             ConsoleBox.IsChecked = mw.Set.DeBug;
 
-            StartUpBox.IsChecked = mw.Set.StartUPBoot;
+            SetStartUpBoxState(mw.Set.StartUPBoot);
             StartUpSteamBox.IsChecked = mw.Set.StartUPBootSteam;
             if (RuntimeFeatures.StandaloneMode)
             {
@@ -1044,7 +1044,11 @@ namespace VPet_Simulator.Windows
         {
             if (RuntimeFeatures.StandaloneMode)
             {
-                ApplyStandaloneStartupState(mw.Set.StartUPBoot);
+                StandaloneDebugLogger.Log(
+                    "[StandaloneDebug] Startup shortcut write skipped\n" +
+                    "[StandaloneDebug] Startup shortcut write blocked because operation is not user initiated\n" +
+                    $"Caller: {nameof(GenStartUP)}");
+                ReconcileStandaloneStartupState();
                 return;
             }
 
@@ -1097,6 +1101,11 @@ namespace VPet_Simulator.Windows
         private void EnableStandaloneStartup()
         {
             var shortcutPath = GetStandaloneShortcutPath();
+            LogStandaloneStartupWriteRequest(
+                StandaloneStartupWriteReason.UserEnabledStartup,
+                nameof(StartUpBox_Checked),
+                true,
+                shortcutPath);
             StandaloneDebugLogger.Log(
                 $"[StandaloneDebug] Startup shortcut toggle on begin\n" +
                 $"StandaloneMode: {RuntimeFeatures.StandaloneMode}\n" +
@@ -1116,8 +1125,18 @@ namespace VPet_Simulator.Windows
                     throw new DirectoryNotFoundException(
                         $"The startup shortcut working directory does not exist: {workingDirectory}");
 
-                DeleteStandaloneShortcut(shortcutPath);
-                CreateStandaloneShortcut(shortcutPath, targetPath, workingDirectory);
+                DeleteStandaloneShortcut(
+                    shortcutPath,
+                    StandaloneStartupWriteReason.UserEnabledStartup,
+                    nameof(StartUpBox_Checked),
+                    true);
+                CreateStandaloneShortcut(
+                    shortcutPath,
+                    targetPath,
+                    workingDirectory,
+                    StandaloneStartupWriteReason.UserEnabledStartup,
+                    nameof(StartUpBox_Checked),
+                    true);
                 ValidateStandaloneShortcutFile(shortcutPath);
 
                 mw.Set.StartUPBoot = true;
@@ -1138,7 +1157,10 @@ namespace VPet_Simulator.Windows
                     $"[StandaloneDebug] Startup shortcut toggle on failed\n{e}\n" +
                     $"[StandaloneDebug] Startup shortcut rollback begin");
 
-                var shortcutRollbackSucceeded = TryDeleteStandaloneShortcut(shortcutPath);
+                var shortcutRollbackSucceeded = TryDeleteStandaloneShortcut(
+                    shortcutPath,
+                    StandaloneStartupWriteReason.EnableRollback,
+                    nameof(EnableStandaloneStartup));
                 var actualStartupEnabled = GetStandaloneStartupShortcutActualState(shortcutPath);
                 StandaloneDebugLogger.Log(
                     shortcutRollbackSucceeded
@@ -1167,6 +1189,11 @@ namespace VPet_Simulator.Windows
         private void DisableStandaloneStartup()
         {
             var shortcutPath = GetStandaloneShortcutPath();
+            LogStandaloneStartupWriteRequest(
+                StandaloneStartupWriteReason.UserDisabledStartup,
+                nameof(StartUpBox_Checked),
+                true,
+                shortcutPath);
             StandaloneDebugLogger.Log(
                 $"[StandaloneDebug] Startup shortcut toggle off begin\n" +
                 $"StandaloneMode: {RuntimeFeatures.StandaloneMode}\n" +
@@ -1176,7 +1203,11 @@ namespace VPet_Simulator.Windows
 
             try
             {
-                DeleteStandaloneShortcut(shortcutPath);
+                DeleteStandaloneShortcut(
+                    shortcutPath,
+                    StandaloneStartupWriteReason.UserDisabledStartup,
+                    nameof(StartUpBox_Checked),
+                    true);
             }
             catch (Exception e)
             {
@@ -1225,7 +1256,13 @@ namespace VPet_Simulator.Windows
                         throw new DirectoryNotFoundException(
                             $"The startup shortcut working directory does not exist: {workingDirectory}");
 
-                    CreateStandaloneShortcut(shortcutPath, targetPath, workingDirectory);
+                    CreateStandaloneShortcut(
+                        shortcutPath,
+                        targetPath,
+                        workingDirectory,
+                        StandaloneStartupWriteReason.DisableRollback,
+                        nameof(DisableStandaloneStartup),
+                        false);
                     ValidateStandaloneShortcutFile(shortcutPath);
 
                     var actualStartupEnabled = GetStandaloneStartupShortcutActualState(shortcutPath);
@@ -1355,28 +1392,78 @@ namespace VPet_Simulator.Windows
             return true;
         }
 
-        private static void DeleteStandaloneShortcut(string shortcutPath)
+        private enum StandaloneStartupWriteReason
+        {
+            UserEnabledStartup,
+            UserDisabledStartup,
+            EnableRollback,
+            DisableRollback
+        }
+
+        private static void LogStandaloneStartupWriteRequest(
+            StandaloneStartupWriteReason reason,
+            string caller,
+            bool isUserInitiated,
+            string shortcutPath)
+        {
+            StandaloneDebugLogger.Log(
+                $"[StandaloneDebug] Startup shortcut write requested\n" +
+                $"[StandaloneDebug] Startup shortcut write reason: {reason}\n" +
+                $"[StandaloneDebug] Startup shortcut write caller: {caller}\n" +
+                $"User initiated: {isUserInitiated}\n" +
+                $"Shortcut path: {shortcutPath}");
+        }
+
+        private static string GetShortcutModifiedTime(string shortcutPath)
+        {
+            return File.Exists(shortcutPath)
+                ? File.GetLastWriteTimeUtc(shortcutPath).ToString("O")
+                : "<missing>";
+        }
+
+        private static void DeleteStandaloneShortcut(
+            string shortcutPath,
+            StandaloneStartupWriteReason reason,
+            string caller,
+            bool isUserInitiated)
         {
             var oldFileExists = File.Exists(shortcutPath);
+            var oldModifiedTime = GetShortcutModifiedTime(shortcutPath);
+            LogStandaloneStartupWriteRequest(reason, caller, isUserInitiated, shortcutPath);
             StandaloneDebugLogger.Log(
-                $"[StandaloneDebug] Startup shortcut old file exists: {oldFileExists}\n" +
-                $"Shortcut path: {shortcutPath}");
+                $"[StandaloneDebug] Startup shortcut delete begin\n" +
+                $"Shortcut path: {shortcutPath}\n" +
+                $"Old file exists: {oldFileExists}\n" +
+                $"Old file modified: {oldModifiedTime}");
 
             if (!oldFileExists)
+            {
+                StandaloneDebugLogger.Log(
+                    $"[StandaloneDebug] Startup shortcut delete success\n" +
+                    $"Shortcut path: {shortcutPath}\n" +
+                    $"Old file modified: {oldModifiedTime}\n" +
+                    $"New file modified: {GetShortcutModifiedTime(shortcutPath)}");
                 return;
+            }
 
-            StandaloneDebugLogger.Log("[StandaloneDebug] Startup shortcut old file delete begin");
             File.Delete(shortcutPath);
             if (File.Exists(shortcutPath))
                 throw new IOException($"The old startup shortcut could not be deleted: {shortcutPath}");
-            StandaloneDebugLogger.Log("[StandaloneDebug] Startup shortcut old file delete end");
+            StandaloneDebugLogger.Log(
+                $"[StandaloneDebug] Startup shortcut delete success\n" +
+                $"Shortcut path: {shortcutPath}\n" +
+                $"Old file modified: {oldModifiedTime}\n" +
+                $"New file modified: {GetShortcutModifiedTime(shortcutPath)}");
         }
 
-        private static bool TryDeleteStandaloneShortcut(string shortcutPath)
+        private static bool TryDeleteStandaloneShortcut(
+            string shortcutPath,
+            StandaloneStartupWriteReason reason,
+            string caller)
         {
             try
             {
-                DeleteStandaloneShortcut(shortcutPath);
+                DeleteStandaloneShortcut(shortcutPath, reason, caller, false);
                 return !File.Exists(shortcutPath);
             }
             catch (Exception e)
@@ -1406,43 +1493,60 @@ namespace VPet_Simulator.Windows
         {
             var shortcutPath = GetStandaloneShortcutPath();
             StandaloneDebugLogger.Log(
-                $"[StandaloneDebug] Startup state reconciliation begin\n" +
+                $"[StandaloneDebug] Startup reconciliation read begin\n" +
                 $"Shortcut path: {shortcutPath}");
 
             var actualStartupEnabled = GetStandaloneStartupShortcutActualState(shortcutPath);
+            StandaloneDebugLogger.Log(
+                $"[StandaloneDebug] Startup reconciliation actual shortcut state: {actualStartupEnabled}\n" +
+                $"[StandaloneDebug] Startup reconciliation config state: {mw.Set.StartUPBoot}");
             if (mw.Set.StartUPBoot == actualStartupEnabled)
             {
                 SetStartUpBoxState(actualStartupEnabled);
+                StandaloneDebugLogger.Log(
+                    $"[StandaloneDebug] Startup reconciliation UI sync: {actualStartupEnabled}\n" +
+                    "[StandaloneDebug] Startup reconciliation read end");
                 return;
             }
 
             StandaloneDebugLogger.Log(
-                $"[StandaloneDebug] Startup state reconciliation mismatch\n" +
+                $"[StandaloneDebug] Startup reconciliation mismatch\n" +
                 $"Setting state: {mw.Set.StartUPBoot}\n" +
                 $"Actual state: {actualStartupEnabled}");
 
             mw.Set.StartUPBoot = actualStartupEnabled;
             SetStartUpBoxState(actualStartupEnabled);
+            StandaloneDebugLogger.Log(
+                $"[StandaloneDebug] Startup reconciliation UI sync: {actualStartupEnabled}\n" +
+                "[StandaloneDebug] Startup reconciliation settings save begin");
             try
             {
                 mw.SaveSettingsOnly();
-                StandaloneDebugLogger.Log("[StandaloneDebug] Startup state reconciliation success");
+                StandaloneDebugLogger.Log(
+                    "[StandaloneDebug] Startup reconciliation settings save success");
             }
             catch (Exception e)
             {
                 StandaloneDebugLogger.Log(
-                    $"[StandaloneDebug] Startup state reconciliation save failed\n{e}");
+                    $"[StandaloneDebug] Startup reconciliation settings save failed\n{e}");
             }
+            StandaloneDebugLogger.Log("[StandaloneDebug] Startup reconciliation read end");
         }
 
         private static void CreateStandaloneShortcut(
             string shortcutPath,
             string targetPath,
-            string workingDirectory)
+            string workingDirectory,
+            StandaloneStartupWriteReason reason,
+            string caller,
+            bool isUserInitiated)
         {
+            var oldModifiedTime = GetShortcutModifiedTime(shortcutPath);
+            LogStandaloneStartupWriteRequest(reason, caller, isUserInitiated, shortcutPath);
             StandaloneDebugLogger.Log(
                 $"[StandaloneDebug] Startup shortcut create begin\n" +
                 $"Shortcut path: {shortcutPath}\n" +
+                $"Old file modified: {oldModifiedTime}\n" +
                 $"Target path: {targetPath}\n" +
                 $"Target exists: {File.Exists(targetPath)}\n" +
                 $"Working directory: {workingDirectory}\n" +
@@ -1463,6 +1567,11 @@ namespace VPet_Simulator.Windows
                 StandaloneDebugLogger.Log("[StandaloneDebug] Startup shortcut save begin");
                 ((IPersistFile)link).Save(shortcutPath, false);
                 StandaloneDebugLogger.Log("[StandaloneDebug] Startup shortcut save end");
+                StandaloneDebugLogger.Log(
+                    $"[StandaloneDebug] Startup shortcut create success\n" +
+                    $"Shortcut path: {shortcutPath}\n" +
+                    $"Old file modified: {oldModifiedTime}\n" +
+                    $"New file modified: {GetShortcutModifiedTime(shortcutPath)}");
             }
             finally
             {

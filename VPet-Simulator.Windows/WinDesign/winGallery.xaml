@@ -125,7 +125,7 @@
                         <Button Margin="7,0,0,0" VerticalAlignment="Center" Content="{ll:Str 保存}"
                                 Style="{DynamicResource ThemedButtonStyle}" Click="ButtonSave_Click" />
                         <Button Margin="7,0,0,0" VerticalAlignment="Center" Content="&#xEB99;" Padding="0"
-                                FontFamily="/VPet-Simulator.Windows;component/Res/#remixicon" FontSize="28"
+                                FontFamily="/CocoCat;component/Res/#remixicon" FontSize="28"
                                 Style="{DynamicResource ThemedButtonStyle}" Click="ButtonClose_Click" />
                     </StackPanel>
                     <Image x:Name="ImagePhotoDetail" Grid.Row="1" Grid.ColumnSpan="3" HorizontalAlignment="Center"

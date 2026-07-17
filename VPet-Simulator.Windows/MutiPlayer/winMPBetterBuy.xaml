@@ -194,7 +194,7 @@
                             VerticalAlignment="Top" Width="30" Height="30" Padding="0" FontSize="22"
                             Foreground="#FFB300" Background="Transparent" ToolTip="{ll:Str 收藏食物}"
                             pu:ToggleButtonHelper.CornerRadius="5" pu:ToggleButtonHelper.CheckedContent="&#xF186;"
-                            pu:IconHelper.Margin="0" FontFamily="/VPet-Simulator.Windows;component/Res/#remixicon"
+                            pu:IconHelper.Margin="0" FontFamily="/CocoCat;component/Res/#remixicon"
                             Content="&#xF18B;" IsChecked="{Binding Star}" />
                     <ToggleButton x:Name="TbtnDetail" Grid.ColumnSpan="2" Margin="0,5,8,0" HorizontalAlignment="Right"
                             VerticalAlignment="Top" Width="30" Height="30" Padding="0" FontSize="22"
@@ -202,7 +202,7 @@
                             ToolTip="{ll:Str 物品详情}" pu:ToggleButtonHelper.CornerRadius="5"
                             pu:ToggleButtonHelper.CheckedContent="&#xEF3D;"
                             pu:ToggleButtonHelper.CheckedForeground="{DynamicResource DARKPrimaryText}"
-                            pu:IconHelper.Margin="0" FontFamily="/VPet-Simulator.Windows;component/Res/#remixicon"
+                            pu:IconHelper.Margin="0" FontFamily="/CocoCat;component/Res/#remixicon"
                             Content="&#xEF3E;" />
                 </Grid>
             </Grid>

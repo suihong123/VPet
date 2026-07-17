@@ -277,7 +277,7 @@
                                  <Run x:Name="r_r_petname_4" Text="萝莉斯" /><Run Text="{ll:Str 对你的好感度是}" /><LineBreak /> <Run
                                             x:Name="r_r_likecount" Text="&#xEE0E;&#xEE0E;&#xEE0E;&#xEE0F;"
                                             FontWeight="Bold"
-                                            FontFamily="/VPet-Simulator.Windows;component/Res/#remixicon"
+                                            FontFamily="/CocoCat;component/Res/#remixicon"
                                             Foreground="{DynamicResource DARKPrimaryDark}" /><LineBreak /><LineBreak />
                                  <Run Text="{ll:Str 超过了全球}" /> <Run x:Name="r_r_likecountrank" Text="XX"
                                             FontWeight="Bold" Foreground="{DynamicResource DARKPrimaryDark}" /> <Run

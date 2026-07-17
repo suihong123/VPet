@@ -257,8 +257,8 @@ jobs:
           Copy-Item -Path "LICENSE" -Destination (Join-Path $leanPackageRoot "LICENSE") -Force
 
           $requiredFiles = @(
-            "VPet-Simulator.Windows.exe",
-            "VPet-Simulator.Windows.dll",
+            "CocoCat.exe",
+            "CocoCat.dll",
             "VPet-Simulator.Core.dll",
             "VPet-Simulator.Windows.Interface.dll",
             "mod/0000_core/info.lps",
@@ -484,12 +484,12 @@ jobs:
           }
 
           $requiredFiles = @(
-            "VPet-Simulator.Windows.exe",
-            "VPet-Simulator.Windows.dll",
+            "CocoCat.exe",
+            "CocoCat.dll",
             "VPet-Simulator.Core.dll",
             "VPet-Simulator.Windows.Interface.dll",
-            "VPet-Simulator.Windows.deps.json",
-            "VPet-Simulator.Windows.runtimeconfig.json",
+            "CocoCat.deps.json",
+            "CocoCat.runtimeconfig.json",
             "SkiaSharp.dll",
             "runtimes/win-x64/native/libSkiaSharp.dll",
             "mod/0000_core/info.lps",
@@ -818,11 +818,11 @@ jobs:
 
           $appXaml = Get-Content "VPet-Simulator.Windows/App.xaml" -Raw
           $windowsProject = Get-Content "VPet-Simulator.Windows/VPet-Simulator.Windows.csproj" -Raw
-          if ($appXaml -notmatch '/VPet-Simulator.Windows;component/Res/Font/#OPPOSans R') {
+          if ($appXaml -notmatch '/CocoCat;component/Res/Font/#OPPOSans R') {
             Write-Error "App main font static evidence is missing."
             exit 1
           }
-          if ($appXaml -notmatch '/VPet-Simulator.Windows;component/Res/#remixicon') {
+          if ($appXaml -notmatch '/CocoCat;component/Res/#remixicon') {
             Write-Error "App remixicon static reference is missing."
             exit 1
           }
@@ -855,12 +855,12 @@ jobs:
           Remove-Item $leanV3FontRoot -Recurse -Force
 
           $requiredFiles = @(
-            "VPet-Simulator.Windows.exe",
-            "VPet-Simulator.Windows.dll",
+            "CocoCat.exe",
+            "CocoCat.dll",
             "VPet-Simulator.Core.dll",
             "VPet-Simulator.Windows.Interface.dll",
-            "VPet-Simulator.Windows.deps.json",
-            "VPet-Simulator.Windows.runtimeconfig.json",
+            "CocoCat.deps.json",
+            "CocoCat.runtimeconfig.json",
             "SkiaSharp.dll",
             "runtimes/win-x64/native/libSkiaSharp.dll",
             "mod/0000_core/info.lps",
@@ -971,7 +971,7 @@ jobs:
           }
 
           $assemblyFiles = @(
-            "VPet-Simulator.Windows.dll",
+            "CocoCat.dll",
             "VPet-Simulator.Core.dll",
             "VPet-Simulator.Windows.Interface.dll",
             "SkiaSharp.dll"
@@ -993,7 +993,7 @@ jobs:
           $catBytes = [long](($catPngFiles | Measure-Object -Property Length -Sum).Sum)
           $x64SkiaRelativePath = "runtimes/win-x64/native/libSkiaSharp.dll"
           $x64Skia = $leanV3Inventory[$x64SkiaRelativePath]
-          $windowsDllSha = $leanV3Inventory["VPet-Simulator.Windows.dll"].Sha256
+          $windowsDllSha = $leanV3Inventory["CocoCat.dll"].Sha256
           $largestFiles = @(Get-ChildItem $leanV3Root -Recurse -File -Force |
             Sort-Object Length -Descending |
             Select-Object -First 30)

@@ -88,13 +88,13 @@
                             Foreground="{DynamicResource DARKPrimary}" />
                     <Button Grid.Column="2" HorizontalAlignment="Right" VerticalAlignment="Center" Content="&#xEB99;"
                             Padding="0" Width="36" Height="36"
-                            FontFamily="/VPet-Simulator.Windows;component/Res/#remixicon" FontSize="28"
+                            FontFamily="/CocoCat;component/Res/#remixicon" FontSize="28"
                             Style="{DynamicResource ThemedButtonStyle}" Click="ButtonCloseDetail_Click" />
                     <ToggleButton x:Name="TbtnStar" Grid.ColumnSpan="3" Margin="0,2,45,0" HorizontalAlignment="Right"
                             VerticalAlignment="Top" Width="30" Height="30" Padding="0" FontSize="22"
                             Foreground="#FFB300" Background="Transparent" ToolTip="{ll:Str 收藏物品}"
                             pu:ToggleButtonHelper.CornerRadius="5" pu:ToggleButtonHelper.CheckedContent="&#xF186;"
-                            pu:IconHelper.Margin="0" FontFamily="/VPet-Simulator.Windows;component/Res/#remixicon"
+                            pu:IconHelper.Margin="0" FontFamily="/CocoCat;component/Res/#remixicon"
                             Content="&#xF18B;" Checked="TbtnStar_Checked" Unchecked="TbtnStar_Checked" />
                     <!-- 左侧：图片 -->
                     <Border Grid.Row="1" CornerRadius="10" Background="{DynamicResource SecondaryTrans4}">

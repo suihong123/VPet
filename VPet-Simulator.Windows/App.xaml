@@ -6,15 +6,15 @@
             <ResourceDictionary.MergedDictionaries>
                 <ResourceDictionary>
                     <FontFamily x:Key="MainFont">
-                        /VPet-Simulator.Windows;component/Res/Font/#OPPOSans R
+                        /CocoCat;component/Res/Font/#OPPOSans R
                     </FontFamily>
                     <FontFamily x:Key="RemixIcon">
-                        /VPet-Simulator.Windows;component/Res/#remixicon
+                        /CocoCat;component/Res/#remixicon
                     </FontFamily>
                 </ResourceDictionary>
                 <ResourceDictionary>
                     <pu:GlobalSettings x:Key="globalSettings" FontFamily="{StaticResource MainFont}" FontSize="14"
-                            IconFontFamily="/VPet-Simulator.Windows;component/Res/#remixicon" IconFontSize="16" />
+                            IconFontFamily="/CocoCat;component/Res/#remixicon" IconFontSize="16" />
 
                     <pu:MessageBoxXSettings x:Key="messageBoxSettings">
                         <pu:MessageBoxXSettings.WindowXStyle>

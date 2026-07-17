@@ -26,6 +26,7 @@
 
 		<Platforms>x86;x64</Platforms>
 
+		<AssemblyName>CocoCat</AssemblyName>
 		<AssemblyTitle>Coco Cat</AssemblyTitle>
 		<Description>A lightweight standalone desktop cat companion for Windows.</Description>
 		<Company>yuhongbo</Company>

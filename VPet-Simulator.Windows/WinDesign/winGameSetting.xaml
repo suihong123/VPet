@@ -283,7 +283,8 @@
                                 <Slider x:Name="OpacitySlider" VerticalAlignment="Center" IsSnapToTickEnabled="True"
                                         LargeChange=".1" Maximum="1" Minimum="0.05" SmallChange=".05"
                                         Style="{DynamicResource StandardSliderStyle}" TickFrequency="0.05" Value="0.6"
-                                        PreviewMouseUp="OpacitySlider_PreviewMouseUp" />
+                                        PreviewMouseUp="OpacitySlider_PreviewMouseUp"
+                                        ValueChanged="OpacitySlider_ValueChanged" />
                                 <TextBlock Grid.Column="1" Margin="15,0,0,0" VerticalAlignment="Center"
                                         Background="{x:Null}" FontSize="18" FontWeight="Bold"
                                         Foreground="{DynamicResource DARKPrimaryDarker}"

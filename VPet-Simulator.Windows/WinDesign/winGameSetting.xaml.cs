@@ -37,6 +37,9 @@ namespace VPet_Simulator.Windows
         MainWindow mw;
         private bool AllowChange = false;
         private bool suppressStartUpToggle;
+        private bool suppressOpacitySwitchChange;
+        private bool standaloneOpacityInitializationSkipLogged;
+        private DateTime lastStandaloneOpacityLogTime = DateTime.MinValue;
         private bool standaloneSettingsClosingSaveInProgress;
         public winGameSetting(MainWindow mw)
         {
@@ -2391,7 +2394,7 @@ namespace VPet_Simulator.Windows
 
         private void SwitchOpacity_Checked(object sender, RoutedEventArgs e)
         {
-            if (!AllowChange)
+            if (!AllowChange || suppressOpacitySwitchChange)
                 return;
             if (SwitchOpacity.IsChecked == true)
             {
@@ -2407,8 +2410,73 @@ namespace VPet_Simulator.Windows
             }
         }
 
+        private void OpacitySlider_ValueChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
+        {
+            if (!RuntimeFeatures.StandaloneMode)
+                return;
+            if (!AllowChange)
+            {
+                if (!standaloneOpacityInitializationSkipLogged)
+                {
+                    standaloneOpacityInitializationSkipLogged = true;
+                    StandaloneDebugLogger.Log(
+                        $"[StandaloneDebug] Standalone opacity initialization skipped\n" +
+                        $"Slider value: {e.NewValue:F2}\nAllowChange: {AllowChange}");
+                }
+                return;
+            }
+
+            ApplyStandaloneOpacityFromSlider(e.NewValue);
+        }
+
+        private void ApplyStandaloneOpacityFromSlider(double sliderValue, bool forceLog = false)
+        {
+            var value = Math.Min(Math.Max(sliderValue, 0.05), 1);
+            mw.Set.Opacity = value;
+
+            if (!mw.Set.OpacityMain)
+            {
+                mw.Set.OpacityMain = true;
+                suppressOpacitySwitchChange = true;
+                try
+                {
+                    SwitchOpacity.IsChecked = true;
+                }
+                finally
+                {
+                    suppressOpacitySwitchChange = false;
+                }
+                StandaloneDebugLogger.Log(
+                    "[StandaloneDebug] Standalone opacity main enabled");
+            }
+
+            mw.Opacity = value;
+
+            var now = DateTime.UtcNow;
+            if (forceLog || (now - lastStandaloneOpacityLogTime).TotalMilliseconds >= 500)
+            {
+                lastStandaloneOpacityLogTime = now;
+                StandaloneDebugLogger.Log(
+                    $"[StandaloneDebug] Standalone opacity slider changed\n" +
+                    $"[StandaloneDebug] Standalone opacity applied\n" +
+                    $"Slider value: {value:F2}\n" +
+                    $"Set.Opacity: {mw.Set.Opacity:F2}\n" +
+                    $"Set.OpacityMain: {mw.Set.OpacityMain}\n" +
+                    $"Set.OpacityHitThrough: {mw.Set.OpacityHitThrough}\n" +
+                    $"MainWindow.Opacity: {mw.Opacity:F2}\n" +
+                    $"AllowChange: {AllowChange}");
+            }
+        }
+
         private void OpacitySlider_PreviewMouseUp(object sender, MouseButtonEventArgs e)
         {
+            if (RuntimeFeatures.StandaloneMode)
+            {
+                if (AllowChange)
+                    ApplyStandaloneOpacityFromSlider(OpacitySlider.Value, true);
+                return;
+            }
+
             mw.Set.Opacity = OpacitySlider.Value;
             if (mw.Set.OpacityMain)
                 mw.Opacity = mw.Set.Opacity;

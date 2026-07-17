@@ -26,13 +26,13 @@
 
 		<Platforms>x86;x64</Platforms>
 
-		<AssemblyTitle>虚拟桌宠模拟器</AssemblyTitle>
-		<Description>VPET的独立窗口实现</Description>
-		<Company>LB Game</Company>
+		<AssemblyTitle>Coco Cat</AssemblyTitle>
+		<Description>A lightweight standalone desktop cat companion for Windows.</Description>
+		<Company>yuhongbo</Company>
 		<AssemblyVersion>1.0.0.0</AssemblyVersion>
 		<FileVersion>1.0.0.0</FileVersion>
-		<Product>VPet-Simulator.Windows</Product>
-		<Copyright>Copyright © exLB.org 2022</Copyright>
+		<Product>Coco Cat</Product>
+		<Copyright>Copyright © yuhongbo 2026</Copyright>
 		<StartupObject>VPet_Simulator.Windows.App</StartupObject>
 	</PropertyGroup>
 	<PropertyGroup Condition="'$(Configuration)|$(Platform)' == 'Debug|x64'">
@@ -61,11 +61,6 @@
 		<NoWarn>1701;1702</NoWarn>
 		<DebugType>embedded</DebugType>
 	</PropertyGroup>
-	<ItemGroup>
-		<AssemblyAttribute Include="System.Reflection.AssemblyTrademarkAttribute">
-			<_Parameter1>exLB.org</_Parameter1>
-		</AssemblyAttribute>
-	</ItemGroup>
 	<ItemGroup>
 		<Compile Remove="GameAssets\**" />
 		<Compile Remove="mod\**" />

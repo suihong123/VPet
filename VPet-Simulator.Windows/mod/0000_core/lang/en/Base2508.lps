@@ -14,5 +14,6 @@
 透明功能#Transparency Feature:|
 常态透明度#Normal Transparency:|
 为桌宠整体启用透明度#Enable Transparency for Entire Desktop Pet:|
-鼠标穿透透明度#Mouse-Penetration Transparency:|
-仅在鼠标穿透时启用透明度功能#Enable Transparency Only When Mouse-Penetrating:|
+穿透时应用透明度#Apply opacity while click-through is enabled:|
+仅在开启鼠标穿透后生效#Only applies when click-through is enabled:|
+开启后无法直接点击或拖动桌宠，可从系统托盘菜单关闭#When enabled, the pet cannot be clicked or dragged. Disable it from the system tray menu.:|

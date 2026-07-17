@@ -2390,6 +2390,10 @@ namespace VPet_Simulator.Windows
             if (!AllowChange)
                 return;
             mw.Set.OpacityHitThrough = SwitchOpacityHitThrough.IsChecked == true;
+            if (mw.HitThrough)
+                mw.Opacity = mw.Set.OpacityHitThrough
+                    ? mw.Set.Opacity
+                    : (mw.Set.OpacityMain ? mw.Set.Opacity : 1);
         }
 
         private void SwitchOpacity_Checked(object sender, RoutedEventArgs e)

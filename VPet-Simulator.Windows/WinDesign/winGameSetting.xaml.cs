@@ -37,6 +37,7 @@ namespace VPet_Simulator.Windows
         MainWindow mw;
         private bool AllowChange = false;
         private bool suppressStartUpToggle;
+        private bool standaloneSettingsClosingSaveInProgress;
         public winGameSetting(MainWindow mw)
         {
             this.mw = mw;
@@ -916,7 +917,38 @@ namespace VPet_Simulator.Windows
             mw.Topmost = mw.Set.TopMost;
             e.Cancel = mw.CloseConfirm;
             voicetimer.Stop();
+
+            if (RuntimeFeatures.StandaloneMode && !standaloneSettingsClosingSaveInProgress)
+            {
+                standaloneSettingsClosingSaveInProgress = true;
+                StandaloneDebugLogger.Log("[StandaloneDebug] Settings window closing");
+                StandaloneDebugLogger.Log("[StandaloneDebug] Settings window save begin");
+                try
+                {
+                    mw.SaveSettingsOnly();
+                    StandaloneDebugLogger.Log("[StandaloneDebug] Settings window save success");
+                }
+                catch (Exception ex)
+                {
+                    StandaloneDebugLogger.Log(
+                        $"[StandaloneDebug] Settings window save failed\n{ex}");
+                    if (mw.CloseConfirm)
+                    {
+                        MessageBoxX.Show(
+                            "设置保存失败，本次修改可能不会在下次启动时保留。\n\n" + ex.Message,
+                            "设置保存失败",
+                            MessageBoxIcon.Error);
+                    }
+                }
+                finally
+                {
+                    standaloneSettingsClosingSaveInProgress = false;
+                }
+            }
+
             Hide();
+            if (RuntimeFeatures.StandaloneMode)
+                StandaloneDebugLogger.Log("[StandaloneDebug] Settings window hidden");
         }
 
         private void TopMostBox_Checked(object sender, RoutedEventArgs e)

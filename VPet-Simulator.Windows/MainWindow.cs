@@ -44,6 +44,14 @@ namespace VPet_Simulator.Windows
     public partial class MainWindow : IMainWindow
     {
         private readonly object settingFileIoLock = new();
+        private bool standaloneSettingsNeedInitialWrite;
+
+        private enum StandaloneSettingsSource
+        {
+            Main,
+            Backup,
+            Default
+        }
 
         /// <summary>
         /// 加载主题
@@ -1435,16 +1443,7 @@ namespace VPet_Simulator.Windows
             try
             {
                 //加载游戏设置
-                if (new FileInfo(ExtensionValue.BaseDirectory + @$"\Setting{PrefixSave}.lps").Exists)
-                {
-                    Set = new Setting(this, File.ReadAllText(ExtensionValue.BaseDirectory + @$"\Setting{PrefixSave}.lps"));
-                }
-                if (PrefixSave == "" && (Set == null || (Set != null && !Set["SingleTips"].GetBool("helloworld"))) && File.Exists(ExtensionValue.BaseDirectory + @"\Setting.bkp"))
-                {//如果设置是损坏的, 读取备份设置
-                    Set = new Setting(this, File.ReadAllText(ExtensionValue.BaseDirectory + @"\Setting.bkp"));
-                }
-
-                Set ??= new Setting(this, "Setting#VPET:|\n");
+                LoadSettingsForInitialization();
 
                 var visualTree = new FrameworkElementFactory(typeof(Border));
                 visualTree.SetValue(Border.BackgroundProperty, new TemplateBindingExtension(BackgroundProperty));
@@ -1537,6 +1536,151 @@ namespace VPet_Simulator.Windows
               + e.ToString();
                 MessageBoxX.Show(errstr, "游戏致命性错误".Translate() + ' ' + "启动错误".Translate(), Panuon.WPF.UI.MessageBoxIcon.Error);
                 Close();
+            }
+        }
+
+        private void LoadSettingsForInitialization()
+        {
+            if (!RuntimeFeatures.StandaloneMode)
+            {
+                if (new FileInfo(ExtensionValue.BaseDirectory + @$"\Setting{PrefixSave}.lps").Exists)
+                {
+                    Set = new Setting(this, File.ReadAllText(ExtensionValue.BaseDirectory + @$"\Setting{PrefixSave}.lps"));
+                }
+                if (PrefixSave == "" && (Set == null || (Set != null && !Set["SingleTips"].GetBool("helloworld"))) && File.Exists(ExtensionValue.BaseDirectory + @"\Setting.bkp"))
+                {//如果设置是损坏的, 读取备份设置
+                    Set = new Setting(this, File.ReadAllText(ExtensionValue.BaseDirectory + @"\Setting.bkp"));
+                }
+
+                Set ??= new Setting(this, "Setting#VPET:|\n");
+                return;
+            }
+
+            var mainPath = Path.GetFullPath(Path.Combine(
+                ExtensionValue.BaseDirectory,
+                $"Setting{PrefixSave}.lps"));
+            var backupPath = Path.GetFullPath(Path.Combine(
+                ExtensionValue.BaseDirectory,
+                "Setting.bkp"));
+            var mainExists = File.Exists(mainPath);
+            var backupExists = PrefixSave == "" && File.Exists(backupPath);
+            var reasons = new List<string>();
+            var source = StandaloneSettingsSource.Default;
+
+            StandaloneDebugLogger.Log(
+                $"[StandaloneDebug] Settings initialization begin\n" +
+                $"StandaloneMode: {RuntimeFeatures.StandaloneMode}\n" +
+                GetSettingsFileState("Settings main file", mainPath) + "\n" +
+                GetSettingsFileState("Settings backup file", backupPath));
+
+            if (mainExists)
+            {
+                StandaloneDebugLogger.Log(
+                    $"[StandaloneDebug] Settings main load begin\nPath: {mainPath}");
+                try
+                {
+                    Set = LoadStandaloneSettingsFile(mainPath);
+                    source = StandaloneSettingsSource.Main;
+                    reasons.Add("MainLoaded");
+                    StandaloneDebugLogger.Log("[StandaloneDebug] Settings main load success");
+                }
+                catch (Exception e)
+                {
+                    reasons.Add("MainParseFailed");
+                    StandaloneDebugLogger.Log(
+                        $"[StandaloneDebug] Settings main load failed\n" +
+                        GetSettingsFileState("Settings main file", mainPath) + $"\n{e}");
+                }
+            }
+            else
+            {
+                reasons.Add("MainMissing");
+            }
+
+            if (Set == null)
+            {
+                if (backupExists)
+                {
+                    StandaloneDebugLogger.Log(
+                        $"[StandaloneDebug] Settings backup load begin\nPath: {backupPath}");
+                    try
+                    {
+                        Set = LoadStandaloneSettingsFile(backupPath);
+                        source = StandaloneSettingsSource.Backup;
+                        reasons.Add("BackupLoaded");
+                        StandaloneDebugLogger.Log("[StandaloneDebug] Settings backup load success");
+                    }
+                    catch (Exception e)
+                    {
+                        reasons.Add("BackupParseFailed");
+                        StandaloneDebugLogger.Log(
+                            $"[StandaloneDebug] Settings backup load failed\n" +
+                            GetSettingsFileState("Settings backup file", backupPath) + $"\n{e}");
+                    }
+                }
+                else
+                {
+                    reasons.Add("BackupMissing");
+                }
+            }
+
+            if (Set == null)
+            {
+                Set = new Setting(this, "Setting#VPET:|\n");
+                source = StandaloneSettingsSource.Default;
+            }
+
+            standaloneSettingsNeedInitialWrite = source != StandaloneSettingsSource.Main;
+            StandaloneDebugLogger.Log(
+                $"[StandaloneDebug] Settings source selected: {source}\n" +
+                $"[StandaloneDebug] Settings source reason: {string.Join("; ", reasons)}\n" +
+                $"helloworld: {Set["SingleTips"].GetBool("helloworld")}\n" +
+                $"Needs first Setting.lps write: {standaloneSettingsNeedInitialWrite}");
+        }
+
+        private Setting LoadStandaloneSettingsFile(string path)
+        {
+            var setting = new Setting(this, File.ReadAllText(path));
+            if (!setting.ContainsLine("Setting"))
+                throw new InvalidDataException(
+                    $"The settings file does not contain the required Setting root line: {path}");
+            return setting;
+        }
+
+        private static string GetSettingsFileState(string label, string path)
+        {
+            try
+            {
+                var file = new FileInfo(path);
+                return $"[StandaloneDebug] {label} exists: {file.Exists}\n" +
+                    $"Path: {path}\n" +
+                    $"Size: {(file.Exists ? file.Length : 0)}\n" +
+                    $"Modified: {(file.Exists ? file.LastWriteTimeUtc.ToString("O") : "<missing>")}";
+            }
+            catch (Exception e)
+            {
+                StandaloneDebugLogger.Log(
+                    $"[StandaloneDebug] {label} inspection failed\nPath: {path}\n{e}");
+                return $"[StandaloneDebug] {label} exists: unknown\nPath: {path}";
+            }
+        }
+
+        private void PersistStandaloneSettingsAfterInitialization()
+        {
+            if (!RuntimeFeatures.StandaloneMode || !standaloneSettingsNeedInitialWrite)
+                return;
+
+            standaloneSettingsNeedInitialWrite = false;
+            StandaloneDebugLogger.Log("[StandaloneDebug] Settings first file creation begin");
+            try
+            {
+                SaveSettingsOnly();
+                StandaloneDebugLogger.Log("[StandaloneDebug] Settings first file creation success");
+            }
+            catch (Exception e)
+            {
+                StandaloneDebugLogger.Log(
+                    $"[StandaloneDebug] Settings first file creation failed\n{e}");
             }
         }
 

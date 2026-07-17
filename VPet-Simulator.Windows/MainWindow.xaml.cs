@@ -253,6 +253,8 @@ namespace VPet_Simulator.Windows
                 else//新玩家,默认设置为
                     Set["CGPT"][(gstr)"type"] = "LB";
 
+                PersistStandaloneSettingsAfterInitialization();
+
                 await GameLoad(Path);
                 if (IsSteamUser)
                 {

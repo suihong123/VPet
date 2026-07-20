@@ -182,6 +182,7 @@ jobs:
           New-Item -ItemType Directory -Path $packageRoot | Out-Null
 
           Copy-Item -Path (Join-Path $outputRoot "*") -Destination $packageRoot -Recurse -Force
+          Copy-Item -Path "VPet-Simulator.Windows/Res" -Destination (Join-Path $packageRoot "Res") -Recurse -Force
           Get-ChildItem $packageRoot -Recurse -Force -Include *.pdb,*.binlog | Remove-Item -Force
           Get-ChildItem $packageRoot -Recurse -Force -Filter ".DS_Store" | Remove-Item -Force
           $catBackupRoot = Join-Path $packageRoot "mod/0000_core/pet/cat_backup_before_coco"

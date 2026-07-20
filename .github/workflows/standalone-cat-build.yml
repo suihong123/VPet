@@ -123,9 +123,20 @@ jobs:
           }
 
           $pngFiles = Get-ChildItem $catRoot -Recurse -File -Filter *.png | Sort-Object FullName
-          if ($pngFiles.Count -ne 12) {
-            Write-Error "Expected 12 cat PNG files, found $($pngFiles.Count)."
-            exit 1
+          $requiredCatFiles = @(
+            "Default/cat_default_000_125.png",
+            "Move/walk.left/cat_walk_left_000_125.png",
+            "Move/walk.right/cat_walk_right_000_125.png",
+            "Raised/Static/cat_raised_static_000_125.png",
+            "Sleep/A/cat_sleep_000_125.png",
+            "Touch/Head/cat_touch_head_000_125.png"
+          )
+          foreach ($requiredCatFile in $requiredCatFiles) {
+            $requiredCatPath = Join-Path $catRoot $requiredCatFile
+            if (-not (Test-Path $requiredCatPath -PathType Leaf)) {
+              Write-Error "Missing required cat PNG file: $requiredCatFile"
+              exit 1
+            }
           }
 
           $manifest = "cat-resource-manifest.txt"
@@ -280,9 +291,20 @@ jobs:
           }
 
           $catPngFiles = @(Get-ChildItem $catRoot -Recurse -File -Filter *.png)
-          if ($catPngFiles.Count -ne 12) {
-            Write-Error "Expected 12 cat PNG files in lean package, found $($catPngFiles.Count)."
-            exit 1
+          $requiredCatFiles = @(
+            "Default/cat_default_000_125.png",
+            "Move/walk.left/cat_walk_left_000_125.png",
+            "Move/walk.right/cat_walk_right_000_125.png",
+            "Raised/Static/cat_raised_static_000_125.png",
+            "Sleep/A/cat_sleep_000_125.png",
+            "Touch/Head/cat_touch_head_000_125.png"
+          )
+          foreach ($requiredCatFile in $requiredCatFiles) {
+            $requiredCatPath = Join-Path $catRoot $requiredCatFile
+            if (-not (Test-Path $requiredCatPath -PathType Leaf)) {
+              Write-Error "Lean package is missing required cat PNG file: $requiredCatFile"
+              exit 1
+            }
           }
 
           if (Test-Path $leanVupRoot) {
@@ -509,9 +531,20 @@ jobs:
             exit 1
           }
           $catPngFiles = @(Get-ChildItem $catRoot -Recurse -File -Filter *.png)
-          if ($catPngFiles.Count -ne 12) {
-            Write-Error "Expected 12 cat PNG files in lean v2 package, found $($catPngFiles.Count)."
-            exit 1
+          $requiredCatFiles = @(
+            "Default/cat_default_000_125.png",
+            "Move/walk.left/cat_walk_left_000_125.png",
+            "Move/walk.right/cat_walk_right_000_125.png",
+            "Raised/Static/cat_raised_static_000_125.png",
+            "Sleep/A/cat_sleep_000_125.png",
+            "Touch/Head/cat_touch_head_000_125.png"
+          )
+          foreach ($requiredCatFile in $requiredCatFiles) {
+            $requiredCatPath = Join-Path $catRoot $requiredCatFile
+            if (-not (Test-Path $requiredCatPath -PathType Leaf)) {
+              Write-Error "Lean v2 package is missing required cat PNG file: $requiredCatFile"
+              exit 1
+            }
           }
 
           $excludedPaths = @(
@@ -889,9 +922,20 @@ jobs:
 
           $catRoot = Join-Path $leanV3Root "mod/0000_core/pet/cat"
           $catPngFiles = @(Get-ChildItem $catRoot -Recurse -File -Filter *.png)
-          if ($catPngFiles.Count -ne 12) {
-            Write-Error "Expected 12 cat PNG files in lean v3 package, found $($catPngFiles.Count)."
-            exit 1
+          $requiredCatFiles = @(
+            "Default/cat_default_000_125.png",
+            "Move/walk.left/cat_walk_left_000_125.png",
+            "Move/walk.right/cat_walk_right_000_125.png",
+            "Raised/Static/cat_raised_static_000_125.png",
+            "Sleep/A/cat_sleep_000_125.png",
+            "Touch/Head/cat_touch_head_000_125.png"
+          )
+          foreach ($requiredCatFile in $requiredCatFiles) {
+            $requiredCatPath = Join-Path $catRoot $requiredCatFile
+            if (-not (Test-Path $requiredCatPath -PathType Leaf)) {
+              Write-Error "Lean v3 package is missing required cat PNG file: $requiredCatFile"
+              exit 1
+            }
           }
 
           $excludedPaths = @(

@@ -162,7 +162,7 @@ jobs:
           retention-days: 7
 
       - name: Prepare internal Windows test package
-        if: github.event_name == 'workflow_dispatch' && inputs.upload_test_package == true && steps.build-windows.outputs.exit_code == '0'
+        if: steps.build-windows.outputs.exit_code == '0'
         shell: pwsh
         run: |
           $outputRoots = @(
@@ -175,7 +175,7 @@ jobs:
             exit 1
           }
 
-          $packageRoot = "standalone-cat-windows-x64-test"
+          $packageRoot = "CocoCat-windows-x64-test"
           if (Test-Path $packageRoot) {
             Remove-Item $packageRoot -Recurse -Force
           }
@@ -183,6 +183,39 @@ jobs:
 
           Copy-Item -Path (Join-Path $outputRoot "*") -Destination $packageRoot -Recurse -Force
           Get-ChildItem $packageRoot -Recurse -Force -Include *.pdb,*.binlog | Remove-Item -Force
+          Get-ChildItem $packageRoot -Recurse -Force -Filter ".DS_Store" | Remove-Item -Force
+          $catBackupRoot = Join-Path $packageRoot "mod/0000_core/pet/cat_backup_before_coco"
+          if (Test-Path $catBackupRoot) {
+            Remove-Item $catBackupRoot -Recurse -Force
+          }
+
+          $requiredPackageFiles = @(
+            "CocoCat.exe",
+            "CocoCat.dll",
+            "CocoCat.deps.json",
+            "CocoCat.runtimeconfig.json",
+            "mod/0000_core/pet/cat/Default/cat_default_000_125.png",
+            "mod/0000_core/pet/cat/Move/walk.left/cat_walk_left_000_125.png",
+            "mod/0000_core/pet/cat/Move/walk.right/cat_walk_right_000_125.png",
+            "mod/0000_core/pet/cat/Raised/Static/cat_raised_static_000_125.png",
+            "mod/0000_core/pet/cat/Sleep/A/cat_sleep_000_125.png",
+            "mod/0000_core/pet/cat/Touch/Head/cat_touch_head_000_125.png"
+          )
+          foreach ($requiredPackageFile in $requiredPackageFiles) {
+            $requiredPackagePath = Join-Path $packageRoot $requiredPackageFile
+            if (-not (Test-Path $requiredPackagePath -PathType Leaf)) {
+              Write-Error "Test package is missing required file: $requiredPackageFile"
+              exit 1
+            }
+          }
+
+          foreach ($requiredPackageDirectory in @("mod", "Res", "mod/0000_core/pet/cat")) {
+            $requiredPackagePath = Join-Path $packageRoot $requiredPackageDirectory
+            if (-not (Test-Path $requiredPackagePath -PathType Container)) {
+              Write-Error "Test package is missing required directory: $requiredPackageDirectory"
+              exit 1
+            }
+          }
 
           @"
           Internal Windows Runtime Test Package
@@ -217,11 +250,11 @@ jobs:
           Get-ChildItem $packageRoot -Recurse -File | Select-Object FullName, Length
 
       - name: Upload internal Windows test package
-        if: github.event_name == 'workflow_dispatch' && inputs.upload_test_package == true && steps.build-windows.outputs.exit_code == '0'
+        if: steps.build-windows.outputs.exit_code == '0'
         uses: actions/upload-artifact@v4
         with:
-          name: standalone-cat-windows-x64-test
-          path: standalone-cat-windows-x64-test
+          name: CocoCat-windows-x64-test
+          path: CocoCat-windows-x64-test
           retention-days: 3
 
       - name: Prepare lean internal Windows test package

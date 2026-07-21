@@ -258,6 +258,208 @@ jobs:
           path: CocoCat-windows-x64-test
           retention-days: 3
 
+      - name: Prepare lean v4 Windows release package
+        if: steps.build-windows.outputs.exit_code == '0'
+        shell: pwsh
+        run: |
+          $fullPackageRoot = "CocoCat-windows-x64-test"
+          $leanV4Root = "artifacts/CocoCat-windows-x64-lean-v4"
+          $manifestPath = "CocoCat-windows-x64-lean-v4-manifest.txt"
+
+          function Get-PackageStats([string] $path) {
+            $files = @(Get-ChildItem $path -Recurse -File -Force)
+            $bytes = [long](($files | Measure-Object -Property Length -Sum).Sum)
+            return [PSCustomObject]@{
+              FileCount = $files.Count
+              Bytes = $bytes
+            }
+          }
+
+          if (-not (Test-Path $fullPackageRoot -PathType Container)) {
+            Write-Error "Full test package staging directory is missing: $fullPackageRoot"
+            exit 1
+          }
+
+          if (Test-Path $leanV4Root) {
+            Remove-Item $leanV4Root -Recurse -Force
+          }
+          New-Item -ItemType Directory -Path $leanV4Root -Force | Out-Null
+          Copy-Item -Path (Join-Path $fullPackageRoot "*") -Destination $leanV4Root -Recurse -Force
+
+          $excludedPaths = @(
+            "mod/0000_core/pet/vup",
+            "mod/0000_core/file",
+            "runtimes/osx",
+            "runtimes/win-x86",
+            "runtimes/win-arm64"
+          )
+          foreach ($relativePath in $excludedPaths) {
+            $path = Join-Path $leanV4Root $relativePath
+            if (Test-Path $path) {
+              Remove-Item $path -Recurse -Force
+            }
+          }
+
+          Get-ChildItem $leanV4Root -Recurse -Force -Include *.xml | Remove-Item -Force
+          Get-ChildItem $leanV4Root -Recurse -Force -Filter ".DS_Store" | Remove-Item -Force
+          $internalReadme = Join-Path $leanV4Root "INTERNAL-TEST-README.txt"
+          if (Test-Path $internalReadme) {
+            Remove-Item $internalReadme -Force
+          }
+
+          $requiredFiles = @(
+            "CocoCat.exe",
+            "CocoCat.dll",
+            "CocoCat.deps.json",
+            "CocoCat.runtimeconfig.json",
+            "VPet-Simulator.Core.dll",
+            "VPet-Simulator.Windows.Interface.dll",
+            "SkiaSharp.dll",
+            "runtimes/win-x64/native/libSkiaSharp.dll",
+            "mod/0000_core/info.lps",
+            "mod/0000_core/pet/cat.lps",
+            "mod/0000_core/pet/cat/Default/cat_default_000_125.png",
+            "mod/0000_core/pet/cat/Move/walk.left/cat_walk_left_000_125.png",
+            "mod/0000_core/pet/cat/Move/walk.right/cat_walk_right_000_125.png",
+            "mod/0000_core/pet/cat/Raised/Static/cat_raised_static_000_125.png",
+            "mod/0000_core/pet/cat/Sleep/A/cat_sleep_000_125.png",
+            "mod/0000_core/pet/cat/Touch/Head/cat_touch_head_000_125.png"
+          )
+          foreach ($relativePath in $requiredFiles) {
+            if (-not (Test-Path (Join-Path $leanV4Root $relativePath) -PathType Leaf)) {
+              Write-Error "Lean v4 package is missing required file: $relativePath"
+              exit 1
+            }
+          }
+
+          foreach ($relativePath in @("mod", "Res", "mod/0000_core/pet/cat", "runtimes/win-x64/native")) {
+            if (-not (Test-Path (Join-Path $leanV4Root $relativePath) -PathType Container)) {
+              Write-Error "Lean v4 package is missing required directory: $relativePath"
+              exit 1
+            }
+          }
+
+          foreach ($relativePath in $excludedPaths) {
+            if (Test-Path (Join-Path $leanV4Root $relativePath)) {
+              Write-Error "Lean v4 package still contains excluded path: $relativePath"
+              exit 1
+            }
+          }
+
+          $remainingXmlFiles = @(Get-ChildItem $leanV4Root -Recurse -Force -File -Filter *.xml)
+          if ($remainingXmlFiles.Count -ne 0) {
+            $remainingXmlFiles | ForEach-Object { Write-Error "Lean v4 package still contains XML file: $($_.FullName)" }
+            exit 1
+          }
+          if (Test-Path (Join-Path $leanV4Root "INTERNAL-TEST-README.txt")) {
+            Write-Error "Lean v4 package still contains INTERNAL-TEST-README.txt."
+            exit 1
+          }
+          $remainingDsStoreFiles = @(Get-ChildItem $leanV4Root -Recurse -Force -File -Filter ".DS_Store")
+          if ($remainingDsStoreFiles.Count -ne 0) {
+            $remainingDsStoreFiles | ForEach-Object { Write-Error "Lean v4 package still contains .DS_Store: $($_.FullName)" }
+            exit 1
+          }
+
+          $fullStats = Get-PackageStats $fullPackageRoot
+          $leanV4Stats = Get-PackageStats $leanV4Root
+          $reducedBytes = $fullStats.Bytes - $leanV4Stats.Bytes
+          $reducedPercent = if ($fullStats.Bytes -eq 0) { 0 } else { ($reducedBytes / $fullStats.Bytes) * 100 }
+          $catFiles = @(Get-ChildItem (Join-Path $leanV4Root "mod/0000_core/pet/cat") -Recurse -File -Force | Sort-Object FullName)
+          $largestFiles = @(Get-ChildItem $leanV4Root -Recurse -File -Force | Sort-Object Length -Descending | Select-Object -First 10)
+          $topLevelStats = @(Get-ChildItem $leanV4Root -Force | ForEach-Object {
+            if ($_.PSIsContainer) {
+              $files = @(Get-ChildItem $_.FullName -Recurse -File -Force)
+              $bytes = [long](($files | Measure-Object -Property Length -Sum).Sum)
+              [PSCustomObject]@{ Name = $_.Name; FileCount = $files.Count; Bytes = $bytes }
+            }
+            else {
+              [PSCustomObject]@{ Name = $_.Name; FileCount = 1; Bytes = [long]$_.Length }
+            }
+          } | Sort-Object Bytes -Descending)
+
+          @(
+            "commit_sha=$env:GITHUB_SHA",
+            "build_time_utc=$([DateTime]::UtcNow.ToString('o'))",
+            "full_package_file_count=$($fullStats.FileCount)",
+            "full_package_total_bytes=$($fullStats.Bytes)",
+            "lean_v4_file_count=$($leanV4Stats.FileCount)",
+            "lean_v4_total_bytes=$($leanV4Stats.Bytes)",
+            "reduced_bytes=$reducedBytes",
+            "reduced_percent=$($reducedPercent.ToString('F2'))",
+            "cat_file_count=$($catFiles.Count)",
+            "",
+            "required_startup_files:"
+          ) | Set-Content $manifestPath
+          foreach ($relativePath in $requiredFiles) {
+            $file = Get-Item (Join-Path $leanV4Root $relativePath)
+            "$relativePath`t$($file.Length)" | Add-Content $manifestPath
+          }
+
+          "" | Add-Content $manifestPath
+          "top_level_stats:" | Add-Content $manifestPath
+          foreach ($entry in $topLevelStats) {
+            "$($entry.Name)`t$($entry.FileCount)`t$($entry.Bytes)" | Add-Content $manifestPath
+          }
+
+          "" | Add-Content $manifestPath
+          "largest_10_files:" | Add-Content $manifestPath
+          $leanV4RootPath = (Resolve-Path $leanV4Root).Path
+          foreach ($file in $largestFiles) {
+            $relativePath = $file.FullName.Substring($leanV4RootPath.Length + 1).Replace('\', '/')
+            "$relativePath`t$($file.Length)" | Add-Content $manifestPath
+          }
+
+          "" | Add-Content $manifestPath
+          "excluded_paths:" | Add-Content $manifestPath
+          $excludedPaths | Add-Content $manifestPath
+          "*.xml" | Add-Content $manifestPath
+          "INTERNAL-TEST-README.txt" | Add-Content $manifestPath
+          ".DS_Store" | Add-Content $manifestPath
+
+          @"
+          ## CocoCat lean v4 Windows release package
+
+          | Metric | Value |
+          | --- | ---: |
+          | Commit | $env:GITHUB_SHA |
+          | Full package files | $($fullStats.FileCount) |
+          | Full package bytes | $($fullStats.Bytes) |
+          | Lean v4 files | $($leanV4Stats.FileCount) |
+          | Lean v4 bytes | $($leanV4Stats.Bytes) |
+          | Bytes removed | $reducedBytes |
+          | Reduction | $($reducedPercent.ToString('F2'))% |
+          | Cat files | $($catFiles.Count) |
+
+          Lean v4 excludes:
+          - mod/0000_core/pet/vup
+          - mod/0000_core/file
+          - runtimes/osx
+          - runtimes/win-x86
+          - runtimes/win-arm64
+          - *.xml
+          - INTERNAL-TEST-README.txt
+          - .DS_Store
+          "@ | Add-Content $env:GITHUB_STEP_SUMMARY
+
+          Get-Content $manifestPath
+
+      - name: Upload lean v4 Windows release package
+        if: steps.build-windows.outputs.exit_code == '0'
+        uses: actions/upload-artifact@v4
+        with:
+          name: CocoCat-windows-x64-lean-v4
+          path: artifacts/CocoCat-windows-x64-lean-v4
+          retention-days: 7
+
+      - name: Upload lean v4 package manifest
+        if: steps.build-windows.outputs.exit_code == '0'
+        uses: actions/upload-artifact@v4
+        with:
+          name: CocoCat-windows-x64-lean-v4-manifest
+          path: CocoCat-windows-x64-lean-v4-manifest.txt
+          retention-days: 7
+
       - name: Prepare lean internal Windows test package
         if: github.event_name == 'workflow_dispatch' && inputs.upload_test_package == true && steps.build-windows.outputs.exit_code == '0'
         shell: pwsh

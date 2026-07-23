@@ -519,6 +519,17 @@ jobs:
           New-Item -ItemType Directory -Path (Split-Path $targetWinX64Runtime -Parent) -Force | Out-Null
           Copy-Item -Path $sourceWinX64Runtime -Destination (Split-Path $targetWinX64Runtime -Parent) -Recurse -Force
 
+          $sourceRes = Join-Path $fullPackageRoot "Res"
+          $targetRes = Join-Path $packageRoot "Res"
+          if (-not (Test-Path $sourceRes -PathType Container)) {
+            Write-Error "Full test package is missing Res."
+            exit 1
+          }
+          if (Test-Path $targetRes) {
+            Remove-Item $targetRes -Recurse -Force
+          }
+          Copy-Item -Path $sourceRes -Destination $packageRoot -Recurse -Force
+
           $excludedPaths = @(
             "mod/0000_core/pet/vup",
             "mod/0000_core/file",

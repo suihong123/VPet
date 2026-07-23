@@ -466,6 +466,7 @@ jobs:
         run: |
           $publishRoot = "publish/CocoCat-windows-x64-self-contained"
           $packageRoot = "artifacts/CocoCat-windows-x64-self-contained"
+          $fullPackageRoot = "CocoCat-windows-x64-test"
           $manifestPath = "CocoCat-windows-x64-self-contained-manifest.txt"
 
           function Get-PackageStats([string] $path) {
@@ -505,6 +506,18 @@ jobs:
           }
 
           Copy-Item -Path (Join-Path $publishRoot "*") -Destination $packageRoot -Recurse -Force
+
+          $sourceWinX64Runtime = Join-Path $fullPackageRoot "runtimes/win-x64"
+          $targetWinX64Runtime = Join-Path $packageRoot "runtimes/win-x64"
+          if (-not (Test-Path $sourceWinX64Runtime -PathType Container)) {
+            Write-Error "Full test package is missing runtimes/win-x64."
+            exit 1
+          }
+          if (Test-Path $targetWinX64Runtime) {
+            Remove-Item $targetWinX64Runtime -Recurse -Force
+          }
+          New-Item -ItemType Directory -Path (Split-Path $targetWinX64Runtime -Parent) -Force | Out-Null
+          Copy-Item -Path $sourceWinX64Runtime -Destination (Split-Path $targetWinX64Runtime -Parent) -Recurse -Force
 
           $excludedPaths = @(
             "mod/0000_core/pet/vup",
